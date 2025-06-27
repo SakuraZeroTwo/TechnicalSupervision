@@ -7,6 +7,7 @@ import json
 from services.vlm_service import get_vlm_analysis
 from services.neo4j_service import neo4j_service
 from services.word_service import create_word_report
+from utils.format_converter import prepare_report_data_for_word, prepare_report_data_for_frontend
 
 # 创建一个蓝图
 api_bp = Blueprint('api', __name__)
@@ -112,18 +113,25 @@ def analyze_issue():
 
 
     # 6. 生成 Word 报告
-    report_data = {
-        'description': description,
-        'analysis': analysis_content.get('cause_analysis'),
-        'suggestions': analysis_content.get('supervision_suggestion'),
-        'regulations': analysis_content.get('regulations')
-    }
-    report_path = create_word_report(report_data, image_path)
+    # report_data = {
+    #     'description': description,
+    #     'analysis': analysis_content.get('cause_analysis'),
+    #     'suggestions': analysis_content.get('supervision_suggestion'),
+    #     'regulations': analysis_content.get('regulations')
+    # }
+    # report_path = create_word_report(report_data, image_path)
+    # report_url = request.host_url + 'api/static/reports/' + os.path.basename(report_path)
+    word_report_data = prepare_report_data_for_word(analysis_content)
+    word_report_data['description'] = description  # 添加原始描述
+
+    report_path = create_word_report(word_report_data, image_path)
     report_url = request.host_url + 'api/static/reports/' + os.path.basename(report_path)
 
     # 7. 组合最终响应
+    frontend_analysis = prepare_report_data_for_frontend(analysis_content)
+
     final_response = {
-        "vlm_analysis": analysis_content,
+        "vlm_analysis": frontend_analysis,
         "historical_cases": historical_cases,
         "subgraph": subgraph,  # 新增子图数据
         "report_url": report_url
@@ -135,6 +143,5 @@ def analyze_issue():
 @api_bp.route('/static/reports/<filename>')
 def download_report(filename):
     """提供 Word 报告的下载链接"""
-    # 注意：这里的路径需要和服务端保存的路径一致
     reports_folder = os.path.abspath(os.path.join('static', 'reports'))
     return send_from_directory(reports_folder, filename, as_attachment=True)
