@@ -113,14 +113,6 @@ def analyze_issue():
 
 
     # 6. 生成 Word 报告
-    # report_data = {
-    #     'description': description,
-    #     'analysis': analysis_content.get('cause_analysis'),
-    #     'suggestions': analysis_content.get('supervision_suggestion'),
-    #     'regulations': analysis_content.get('regulations')
-    # }
-    # report_path = create_word_report(report_data, image_path)
-    # report_url = request.host_url + 'api/static/reports/' + os.path.basename(report_path)
     word_report_data = prepare_report_data_for_word(analysis_content)
     word_report_data['description'] = description  # 添加原始描述
 
@@ -133,7 +125,7 @@ def analyze_issue():
     final_response = {
         "vlm_analysis": frontend_analysis,
         "historical_cases": historical_cases,
-        "subgraph": subgraph,  # 新增子图数据
+        "subgraph": subgraph,  # 子图数据
         "report_url": report_url
     }
 
