@@ -119,18 +119,14 @@ class FileService:
         processed_files = 0
         matched_files = 0
 
-        # 记录查询信息
         print(f"开始查询 - 阶段: {stage}, 关键词: {keywords}")
 
-        # 处理关键词格式
         if isinstance(keywords, str):
             keywords = [keywords]
 
-        # 拆分复合关键词,如"变压器跳闸"同时匹配"变压器"和"跳闸"
         expanded_keywords = []
         for keyword in keywords:
             expanded_keywords.append(keyword)
-            # 使用jieba分词处理复合关键词
             if len(keyword) > 2:
                 parts = jieba.lcut(keyword)
                 for part in parts:
@@ -139,31 +135,25 @@ class FileService:
 
         print(f"扩展后的关键词: {expanded_keywords}")
 
-        # 标准化阶段名称
         normalized_stage = self._normalize_stage(stage)
         print(f"标准化后的阶段: {normalized_stage}")
 
-        # --------- 新增: 首先根据文件名筛选相关条例文件 ---------
         filtered_files = []
         for file_path in self.regulation_files:
             file_name = os.path.basename(file_path)
-            # 检查文件名是否包含任何关键词
             if any(kw in file_name for kw in expanded_keywords):
-                filtered_files.append((file_path, 2))  # 文件名匹配的权重更高
+                filtered_files.append((file_path, 2))
             elif any(kw in file_name.lower() for kw in expanded_keywords):
-                filtered_files.append((file_path, 1))  # 不区分大小写的匹配权重稍低
+                filtered_files.append((file_path, 1))
 
-        # 如果没有找到文件名匹配的条例，使用所有条例文件
         if not filtered_files:
             print("文件名中未找到匹配关键词的条例，将搜索所有条例文件")
             filtered_files = [(file_path, 0) for file_path in self.regulation_files]
         else:
             print(f"找到 {len(filtered_files)} 个文件名包含关键词的条例文件")
 
-        # 按匹配权重排序，优先处理文件名匹配的条例
         filtered_files.sort(key=lambda x: x[1], reverse=True)
 
-        # 遍历筛选后的条例文件
         for file_path, name_match_score in filtered_files:
             try:
                 file_name = os.path.basename(file_path)
@@ -171,145 +161,50 @@ class FileService:
                 processed_files += 1
                 xls = pd.ExcelFile(file_path)
 
-                # 更灵活的工作表匹配策略
                 target_sheets = []
-
-                # 1. 精确匹配阶段名
                 for sheet_name in xls.sheet_names:
                     if normalized_stage.lower() in sheet_name.lower():
                         target_sheets.append(sheet_name)
 
-                # 2. 部分匹配
-                if not target_sheets:
-                    stage_keywords = self._stage_dict.get(normalized_stage, [normalized_stage])
-                    for sheet_name in xls.sheet_names:
-                        if any(kw.lower() in sheet_name.lower() for kw in stage_keywords):
-                            target_sheets.append(sheet_name)
-
-                # 3. 通用工作表匹配
-                if not target_sheets and normalized_stage == "运维检修":
-                    for sheet_name in xls.sheet_names:
-                        if any(kw in sheet_name.lower() for kw in ["运行", "运维", "检修", "维护"]):
-                            target_sheets.append(sheet_name)
-
-                # 4. 文件名关键词匹配
-                if not target_sheets:
-                    if any(kw.lower() in file_name.lower() for kw in expanded_keywords):
-                        target_sheets = xls.sheet_names[:1]  # 使用第一个工作表
-                        print(f"根据文件名匹配关键词，使用第一个工作表: {target_sheets}")
-
-                # 5. 最后手段: 处理所有工作表
                 if not target_sheets:
                     target_sheets = [xls.sheet_names[0]]
-                    print(f"未找到匹配的工作表，将处理第一个工作表: {target_sheets[0]}")
 
-                # 处理选定的工作表
                 for sheet_name in target_sheets:
                     try:
                         print(f"  处理工作表: {sheet_name}")
 
-                        # 使用新函数查找列
+                        # 【修正】初始化data_start_row，避免引用前未赋值的错误
+                        data_start_row = 3  # 默认数据从第4行开始（索引为3）
+
                         column_data, col_indices = self._find_columns_in_excel(file_path, sheet_name)
 
-                        if not column_data:
-                            print(f"  工作表 {sheet_name} 未找到相关列，尝试固定行位置方案")
-                            # 尝试固定位置方案
-                            df = pd.read_excel(file_path, sheet_name=sheet_name, header=None)
-                            if len(df.columns) >= 6:  # 确保有足够的列
-                                # 根据常见Excel格式，尝试使用固定位置
-                                # 通常第3行包含列名，第4行开始是数据
-                                header_row = 2  # 索引从0开始，所以第3行是索引2
-                                data_start_row = header_row + 1
-
-                                # 尝试推断列的位置
-                                potential_columns = {
-                                    '监督依据': None,
-                                    '监督要点': None,
-                                    '监督要求': None
-                                }
-
-                                # 在第3行查找列名
-                                if len(df) > header_row:
-                                    for col_idx in range(len(df.columns)):
-                                        cell_value = df.iloc[header_row, col_idx]
-                                        if pd.notna(cell_value):
-                                            cell_str = str(cell_value).strip()
-                                            if '依据' in cell_str or '规范' in cell_str or '标准' in cell_str:
-                                                potential_columns['监督依据'] = col_idx
-                                            elif '要点' in cell_str or '重点' in cell_str or '点' in cell_str:
-                                                potential_columns['监督要点'] = col_idx
-                                            elif '要求' in cell_str or '措施' in cell_str:
-                                                potential_columns['监督要求'] = col_idx
-
-                                # 为找到的列创建数据
-                                column_data = {}
-                                for col_name, col_idx in potential_columns.items():
-                                    if col_idx is not None and data_start_row < len(df):
-                                        column_data[col_name] = df.iloc[data_start_row:, col_idx]
-                                        print(f"    根据位置找到列 '{col_name}'，位置: 第{col_idx + 1}列")
-
-                                # 如果仍然找不到所需列，尝试常用列位置
-                                if not column_data and len(df.columns) >= 6:
-                                    print(f"    使用固定列位置索引")
-                                    column_data = {
-                                        '监督依据': df.iloc[data_start_row:, 4] if 4 < len(df.columns) else None,
-                                        '监督要点': df.iloc[data_start_row:, 5] if 5 < len(df.columns) else None,
-                                        '监督要求': df.iloc[data_start_row:, 6] if 6 < len(df.columns) else None
-                                    }
-                                    column_data = {k: v for k, v in column_data.items() if v is not None}
-
-                        # 如果仍然没有找到列
                         if not column_data:
                             print(f"  工作表 {sheet_name} 未找到相关列")
                             continue
 
                         print(f"  在工作表 {sheet_name} 找到列: {list(column_data.keys())}")
 
-                        # 处理每一行数据
                         for idx in range(len(next(iter(column_data.values())))):
                             row_data = {}
                             match_score = 0
 
-                            # 提取当前行的每列数据
                             for col_name, col_data in column_data.items():
                                 if idx < len(col_data) and pd.notna(col_data.iloc[idx]):
                                     value = str(col_data.iloc[idx]).strip()
                                     row_data[col_name] = value
 
-                                    # 计算与关键词的匹配程度
                                     for keyword in expanded_keywords:
                                         if keyword.lower() in value.lower():
                                             match_score += 1
-                                            print(f"    在{col_name}列发现关键词'{keyword}'")
-                                        # 针对复杂关键词，分词后单独匹配
                                         elif len(keyword) > 2:
                                             for part in jieba.lcut(keyword):
                                                 if len(part) >= 2 and part.lower() in value.lower():
                                                     match_score += 0.5
-                                                    print(f"    在{col_name}列发现关键词部分'{part}'")
 
-                            # 添加文件名匹配的额外分数
                             match_score += name_match_score * 0.5
 
-                            # 如果有足够的匹配分数，添加到结果中
                             if match_score > 0:
-                                # 获取标题
                                 title = f"{os.path.basename(file_path)} - {sheet_name}"
-                                # 如果有标题列，尝试获取
-                                if idx > 0:
-                                    try:
-                                        df = pd.read_excel(file_path, sheet_name=sheet_name, header=None)
-
-                                        # 检查是否有可能的标题列
-                                        for col_idx in [0, 1]:  # 通常第一列或第二列包含标题
-                                            if col_idx < len(df.columns):
-                                                title_value = df.iloc[idx + data_start_row, col_idx]
-                                                if pd.notna(title_value) and len(str(title_value).strip()) > 0:
-                                                    title = str(title_value).strip()
-                                                    break
-                                    except Exception as title_err:
-                                        print(f"    获取标题时出错: {str(title_err)}")
-
                                 result = {
                                     'title': title,
                                     'basis': row_data.get('监督依据', ''),
@@ -323,21 +218,16 @@ class FileService:
                                 }
                                 results.append(result)
                                 matched_files += 1
-                                print(f"    找到匹配项，分数: {match_score}")
 
                     except Exception as e:
                         print(f"处理工作表 {sheet_name} 时出错: {str(e)}")
-                        import traceback
-                        print(traceback.format_exc())
                         continue
-
             except Exception as e:
                 print(f"处理文件 {file_path} 时出错: {str(e)}")
                 continue
 
         print(f"检索统计: 处理了{processed_files}个文件, 匹配到{matched_files}个结果")
 
-        # 根据匹配分数排序并去重
         unique_results = {}
         for result in results:
             key = f"{result['basis']}_{result['points']}_{result['requirements']}"

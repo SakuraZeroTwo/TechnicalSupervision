@@ -10,6 +10,7 @@ try:
     # 初始化 OpenAI 客户端，指向阿里云的兼容 API
     client = OpenAI(
         api_key=os.getenv("ALIYUN_API_KEY"),
+        # 【已修正】移除了 base_url 周围多余的 Markdown 链接格式
         base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
     )
 except TypeError:
@@ -37,18 +38,18 @@ def get_vlm_analysis(prompt_text: str, image_path: str, stage: str = None) -> di
     if not client:
         return {"error": "OpenAI 客户端未初始化。"}
 
+    # 这个提示词是核心，确保它能返回我们需要的所有字段
     enhanced_prompt = f"""
     你是一个资深的电力设备巡检专家。请根据以下用户描述和图片，完成以下分析任务：
 
-    1. **扩写描述**: 根据图片扩写用户描述，使描述更加专业、全面。
-    2. **状态描述**: 详细描述设备的状态，判断严重程度（例如：一般、严重）。
-    3. **原因分析**: 分析可能导致该问题的潜在原因。
-    4. **阶段识别**: {f'问题属于用户指定的"{stage}"阶段' if stage else '识别该问题可能出现的阶段（如规划可研阶段、设计阶段、安装调试阶段、运行维护阶段等）'}。
-    5. **相关条例**: 可能关联的电力技术监督条例或安全规程编号（例如：DL/T 596-2021）。
-    6. **监督意见**: 提出具体的处理建议或监督意见。
-    7. **实体提取**: 识别描述和图片中的核心实体（设备名称、问题类型、部件等），以便后续检索相关文档。
+    1.  **扩写描述 (enhanced_description)**: 根据图片和用户描述，用专业的语言对问题进行详细、全面的扩写。
+    2.  **状态描述 (status_description)**: 详细描述图片中设备的状态，并判断其严重程度（例如：一般、严重、紧急）。
+    3.  **原因分析 (cause_analysis)**: 分析可能导致该问题的多种潜在原因。
+    4.  **阶段识别 (stage)**: {f'问题属于用户指定的"{stage}"阶段' if stage else '从“规划可研阶段、工程设计阶段、设备采购阶段、设备制造阶段、设备验收阶段、设备安装阶段、设备调试阶段、竣工验收阶段、运维检修阶段、退役报废阶段”中，识别该问题最可能出现的阶段。'}
+    5.  **监督意见 (supervision_suggestion)**: 提出具体、可执行的处理建议或监督意见。
+    6.  **实体提取 (entities)**: 识别描述和图片中的核心实体（如设备名称、问题类型、关键部件等），以列表形式返回，例如 ["绝缘子", "污闪", "裂纹"]。
 
-    请将你的回答以 JSON 格式返回，包含以下键：'enhanced_description', 'status_description', 'cause_analysis', 'stage', 'regulations', 'supervision_suggestion', 'entities'。
+    请严格将你的回答以一个完整的 JSON 对象的格式返回，确保不包含任何额外的解释性文字。JSON对象必须包含以下键：'enhanced_description', 'status_description', 'cause_analysis', 'stage', 'supervision_suggestion', 'entities'。
 
     用户描述: "{prompt_text}"
     """
@@ -84,7 +85,7 @@ def get_vlm_analysis(prompt_text: str, image_path: str, stage: str = None) -> di
         completion = client.chat.completions.create(
             model="qwen-vl-max",
             messages=messages,
-            # temperature、top_p 等参数可以根据需要调整
+            temperature=0.2 # 稍低的温度确保分析的稳定性
         )
         # 提取模型返回的核心内容
         content = completion.choices[0].message.content
@@ -94,14 +95,3 @@ def get_vlm_analysis(prompt_text: str, image_path: str, stage: str = None) -> di
     except Exception as e:
         print(f"调用 VLM API 时发生错误: {e}")
         return {"error": str(e)}
-    # """临时返回模拟数据用于测试"""
-    # mock_response = {
-    #     "content": """{
-    #             "status_description": "设备绝缘子表面存在明显污闪痕迹，属于严重状态",
-    #             "cause_analysis": "长期暴露在污染环境中，表面积累污垢导致闪络",
-    #             "regulations": "按照DL/T 596-2021《电力设备预防性试验规程》相关要求处理",
-    #             "supervision_suggestion": "立即停用设备，清洁绝缘子表面，进行绝缘测试",
-    #             "entities": ["绝缘子", "污闪", "闪络"]
-    #         }"""
-    # }
-    # return mock_response

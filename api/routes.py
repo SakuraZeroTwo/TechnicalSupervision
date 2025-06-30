@@ -4,13 +4,14 @@ from werkzeug.utils import secure_filename
 import os
 import json
 import warnings
+
 # 忽略openpyxl的样式警告
 warnings.filterwarnings("ignore", category=UserWarning,
-                       message="Workbook contains no default style, apply openpyxl's default")
+                        message="Workbook contains no default style, apply openpyxl's default")
 
 # 导入服务
 from services.vlm_service import get_vlm_analysis
-from services.neo4j_service import neo4j_service
+# from services.neo4j_service import neo4j_service # neo4j服务已不再使用
 from services.word_service import create_word_report
 from services.file_service import file_service
 from utils.format_converter import prepare_report_data_for_word, prepare_report_data_for_frontend
@@ -52,7 +53,7 @@ def analyze_issue():
     file.save(image_path)
 
     # 3. 调用 VLM 服务进行分析,传入阶段参数
-    vlm_result = get_vlm_analysis(description, image_path,stage)
+    vlm_result = get_vlm_analysis(description, image_path, stage)
 
     if "error" in vlm_result:
         return jsonify({"error": "调用VLM模型失败", "details": vlm_result.get('error')}), 500
@@ -60,7 +61,6 @@ def analyze_issue():
     # 4. 解析 VLM 返回的 JSON 结果
     try:
         raw_content = vlm_result['content']
-
         # 清理模型返回的字符串 ---
         # 模型可能返回被 Markdown 包裹的 JSON，例如 ```json\n{...}\n```，需要提取出纯净的 JSON 字符串
         if '```' in raw_content:
@@ -80,113 +80,62 @@ def analyze_issue():
             {"error": "解析VLM返回结果失败", "details": str(e), "raw_vlm_output": vlm_result.get('content')}), 500
 
     # 5. 从分析中提取关键信息
-    entities_data = analysis_content.get('entities', {})
-    recognized_stage = analysis_content.get('stage', stage if stage else '运维检修阶段')
-
-    # 确保entities是列表格式
     entities_list = []
-    if isinstance(entities_data, dict):
-        for key, value in entities_data.items():
-            if isinstance(value, list):
-                entities_list.extend(value)
-            else:
-                entities_list.append(value)
-    elif isinstance(entities_data, list):
+    entities_data = analysis_content.get('entities', [])
+    if isinstance(entities_data, list):
         entities_list = entities_data
     elif isinstance(entities_data, str):
         entities_list = [e.strip() for e in entities_data.split(',')]
 
     # 添加原始描述中的关键词作为实体
     if description:
-        # 将用户描述中的关键词也加入实体列表
         description_keywords = [w for w in jieba.lcut(description) if len(w) >= 2]
         for kw in description_keywords:
             if kw not in entities_list:
                 entities_list.append(kw)
 
-    print(f"提取的实体和关键词: {entities_list}")
-    print(f"识别的阶段: {recognized_stage}")
+    recognized_stage = analysis_content.get('stage', stage if stage else '运维检修阶段')
+    enhanced_description = analysis_content.get('enhanced_description', description)  # 获取扩写后的描述
 
-    # historical_cases = []
-    # subgraph = None
-    #
-    # try:
-    #     if entities_list and entities_list[0]:
-    #         historical_cases = neo4j_service.find_historical_cases(entities_list[0])
-    #     # 任务5：尝试获取相关子图
-    #     if entities_list:
-    #         subgraph = neo4j_service.get_subgraph_for_entities(entities_list)
-    # except Exception as e:
-    #     current_app.logger.error(f"Neo4j查询错误: {str(e)}")
-    #     historical_cases = []
-    #     subgraph = None
-
-
-    # 6. 使用文件检索服务查询历史案例和规范条例
-    historical_cases = []
-    regulations = []
-    subgraph = None
-
-    try:
-        # 查询相关历史案例
-        if entities_list:
-            historical_cases = file_service.find_historical_cases_by_entities(entities_list, recognized_stage)
-            print(f"找到 {len(historical_cases)} 个相关历史案例")
-
-        # 查询相关技术规范
-        if entities_list:
+    # 6. 使用文件服务检索规范条例
+    retrieved_regulations = []
+    if entities_list:
+        try:
             clean_stage = recognized_stage.replace("阶段", "") if recognized_stage else "运维检修"
-            regulations = file_service.find_regulations_by_stage_and_keywords(clean_stage, entities_list)
-            print(f"找到 {len(regulations)} 条相关技术规范")
+            retrieved_regulations = file_service.find_regulations_by_stage_and_keywords(clean_stage, entities_list)
+        except Exception as e:
+            current_app.logger.error(f"文件检索错误: {str(e)}")
 
-        # 获取相关子图
-        if entities_list:
-            subgraph = file_service.get_subgraph_for_entities(entities_list)
-    except Exception as e:
-        current_app.logger.error(f"文件检索错误: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
+    # 7. 【最终简化逻辑】直接选用第一条检索到的条例
+    best_regulation = {}
+    if retrieved_regulations:
+        # file_service 返回的结果已经按相关性排序，直接取第一个即可
+        best_regulation = retrieved_regulations[0]
 
-    # 7. 生成 Word 报告
-    # word_report_data = prepare_report_data_for_word(analysis_content)
-    # word_report_data['description'] = description  # 添加原始描述
-    #
-    # report_path = create_word_report(word_report_data, image_path)
-    # report_url = request.host_url + 'api/static/reports/' + os.path.basename(report_path)
-
+    # 8. 准备 Word 报告所需的数据 (精确、简化)
     word_report_data = {
-        'description': description,
-        'enhanced_description': analysis_content.get('enhanced_description', ''),
-        'status_description': analysis_content.get('status_description', ''),
-        'analysis': analysis_content.get('cause_analysis', ''),
         'stage': recognized_stage,
+        'regulation': best_regulation,  # 传递选出的最佳条例字典
+        'description': enhanced_description,  # 使用扩写后的描述
+        'analysis': analysis_content.get('cause_analysis', ''),
         'suggestions': analysis_content.get('supervision_suggestion', ''),
-        'regulations': regulations
     }
 
+    # 9. 生成 Word 报告
     report_path = create_word_report(word_report_data, image_path)
     report_url = request.host_url + 'api/static/reports/' + os.path.basename(report_path)
 
-    # 8. 组合最终响应
-    frontend_analysis = {
-        'enhanced_description': analysis_content.get('enhanced_description', ''),
-        'status_description': analysis_content.get('status_description', ''),
-        'cause_analysis': analysis_content.get('cause_analysis', ''),
-        'stage': recognized_stage,
-        'regulations': analysis_content.get('regulations', ''),
-        'supervision_suggestion': analysis_content.get('supervision_suggestion', ''),
-        'entities': entities_list
-    }
-
+    # 10. 组合最终响应
     final_response = {
-        "vlm_analysis": frontend_analysis,
-        "historical_cases": historical_cases,
-        "regulations": regulations,
-        "subgraph": subgraph,
+        "vlm_analysis": analysis_content,
+        "historical_cases": file_service.find_historical_cases_by_entities(entities_list, recognized_stage),
+        "regulations": [best_regulation] if best_regulation else [],  # 返回给前端的也只是最佳条例
+        "subgraph": file_service.get_subgraph_for_entities(entities_list),
         "report_url": report_url
     }
 
     return jsonify(final_response)
+
 
 # 添加阶段获取端点
 @api_bp.route('/stages', methods=['GET'])
@@ -206,6 +155,7 @@ def get_available_stages():
     ]
     return jsonify({"stages": stages})
 
+
 # 添加单独的案例检索端点
 @api_bp.route('/search/cases', methods=['POST'])
 def search_historical_cases():
@@ -223,6 +173,7 @@ def search_historical_cases():
         return jsonify({"cases": results})
     except Exception as e:
         return jsonify({"error": f"搜索失败: {str(e)}"}), 500
+
 
 @api_bp.route('/static/reports/<filename>')
 def download_report(filename):
