@@ -1,0 +1,57 @@
+<annotation>
+	<folder>厦门700</folder>
+	<filename>110kV 东孚站-2号主变-本体-储油柜-渗漏油-20230625-01.JPG</filename>
+	<path>F:\每日工作\厦门700\110kV 东孚站-2号主变-本体-储油柜-渗漏油-20230625-01.JPG</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>4032</width>
+		<height>3024</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>胡诚伟</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>784</xmin>
+			<ymin>1759</ymin>
+			<xmax>3459</xmax>
+			<ymax>3024</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>cysb_cyg</name>
+		<name_cn>cysb_cyg</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>23</xmin>
+			<ymin>1</ymin>
+			<xmax>3862</xmax>
+			<ymax>1630</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>sly_bjbmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1249</xmin>
+			<ymin>653</ymin>
+			<xmax>2146</xmax>
+			<ymax>1163</ymax>
+		</bndbox>
+	</object>
+</annotation>

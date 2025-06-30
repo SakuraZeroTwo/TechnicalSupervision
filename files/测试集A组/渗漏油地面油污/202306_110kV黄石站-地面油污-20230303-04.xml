@@ -1,0 +1,43 @@
+<annotation>
+	<folder>JPEGImages</folder>
+	<filename>202306_110kV黄石站-地面油污-20230303-04.jpg</filename>
+	<path>\\22.53.1.228\share\model_data\图像\03变电\设备处熊佳丽变电\2024\24年9类变电\sly_bjbmyw	Z\JPEGImages\202306_110kV黄石站-地面油污-20230303-04.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>4000</width>
+		<height>3000</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person/>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1668</xmin>
+			<ymin>1447</ymin>
+			<xmax>2957</xmax>
+			<ymax>2205</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>sly_bjbmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1068</xmin>
+			<ymin>1</ymin>
+			<xmax>3303</xmax>
+			<ymax>707</ymax>
+		</bndbox>
+	</object>
+</annotation>

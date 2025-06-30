@@ -1,0 +1,29 @@
+<annotation>
+	<folder>015地面油污</folder>
+	<filename>35kV 书坊站-地面油污-20230601-02.jpg</filename>
+	<path>F:\新建文件夹 (2)\南平5\015地面油污\35kV 书坊站-地面油污-20230601-02.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>4032</width>
+		<height>3024</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>陈钰霞</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1</xmin>
+			<ymin>927</ymin>
+			<xmax>4032</xmax>
+			<ymax>3024</ymax>
+		</bndbox>
+	</object>
+</annotation>

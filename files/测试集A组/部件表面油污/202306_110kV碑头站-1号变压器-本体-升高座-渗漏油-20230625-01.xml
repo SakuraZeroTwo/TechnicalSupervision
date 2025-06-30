@@ -1,0 +1,30 @@
+<annotation>
+	<folder>JPEGImages</folder>
+	<filename>202306_110kV碑头站-1号变压器-本体-升高座-渗漏油-20230625-01.jpg</filename>
+	<path>\\22.53.1.228\share\model_data\图像\03变电\设备处熊佳丽变电\2024\24年9类变电\sly_bjbmyw	Z\JPEGImages\202306_110kV碑头站-1号变压器-本体-升高座-渗漏油-20230625-01.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>3456</width>
+		<height>2304</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<detect_model>bd_defect</detect_model>
+	<label_person/>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>部件表面油污</name_cn>
+		<score>0.41</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>793</xmin>
+			<ymin>174</ymin>
+			<xmax>2419</xmax>
+			<ymax>2304</ymax>
+		</bndbox>
+	</object>
+</annotation>

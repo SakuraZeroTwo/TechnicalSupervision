@@ -1,0 +1,29 @@
+<annotation>
+	<folder>安溪公司</folder>
+	<filename>110kV 参内站-1号变压器-本体-储油柜-渗漏油-20221202-03.jpg</filename>
+	<path>D:\Backup\桌面\新建文件夹 (4)\变电标签演示\设备处熊佳丽变电\7月份设备处标注\泉州\泉州公司第三批报送\安溪公司\110kV 参内站-1号变压器-本体-储油柜-渗漏油-20221202-03.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>2304</width>
+		<height>4096</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>李浩</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>136</xmin>
+			<ymin>2457</ymin>
+			<xmax>1692</xmax>
+			<ymax>3393</ymax>
+		</bndbox>
+	</object>
+</annotation>

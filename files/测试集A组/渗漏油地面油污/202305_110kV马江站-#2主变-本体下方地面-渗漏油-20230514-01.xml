@@ -1,0 +1,29 @@
+<annotation>
+	<folder>可见光样本</folder>
+	<filename>110kV 马江站-#2主变-本体下方地面-渗漏油-20230514-01.jpg</filename>
+	<path>C:\Users\DKY8304\Desktop\变电福州\110kV\可见光样本\110kV 马江站-#2主变-本体下方地面-渗漏油-20230514-01.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>3000</width>
+		<height>4000</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>胡诚伟</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>964</xmin>
+			<ymin>2387</ymin>
+			<xmax>2095</xmax>
+			<ymax>3450</ymax>
+		</bndbox>
+	</object>
+</annotation>

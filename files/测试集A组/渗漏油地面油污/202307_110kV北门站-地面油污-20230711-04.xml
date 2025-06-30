@@ -1,0 +1,29 @@
+<annotation>
+	<folder>015地面油污</folder>
+	<filename>110kV 北门站-地面油污-20230711-04.jpg</filename>
+	<path>F:\每日工作\南平\新建文件夹\报送样本库-南平公司7月-1\015地面油污\110kV 北门站-地面油污-20230711-04.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>3456</width>
+		<height>4608</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>胡诚伟</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>975</xmin>
+			<ymin>3034</ymin>
+			<xmax>2485</xmax>
+			<ymax>3644</ymax>
+		</bndbox>
+	</object>
+</annotation>

@@ -1,0 +1,30 @@
+<annotation>
+	<folder>可见光样本</folder>
+	<filename>历史站-1号变压器-冷却器系统-冷却器系统-渗漏油-无人机-20230401-05.JPG</filename>
+	<path>D:\设备处变电设备标注（本周内优先标注完成）\龙岩\龙岩公司-远程智能巡视图像1\2023年4月（图像放置处）\11福建（图像放置处）\历史站（图像放置处）\可见光样本\历史站-1号变压器-冷却器系统-冷却器系统-渗漏油-无人机-20230401-05.JPG</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>4000</width>
+		<height>3000</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<detect_model>bd_defect</detect_model>
+	<label_person>黄事豪</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>地面油污</name_cn>
+		<score>0.67</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1623</xmin>
+			<ymin>883</ymin>
+			<xmax>3023</xmax>
+			<ymax>2569</ymax>
+		</bndbox>
+	</object>
+</annotation>

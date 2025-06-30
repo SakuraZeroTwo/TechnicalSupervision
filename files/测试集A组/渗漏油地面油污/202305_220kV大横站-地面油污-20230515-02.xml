@@ -1,0 +1,29 @@
+<annotation>
+	<folder>地面油污（视频）</folder>
+	<filename>220kV 大横站-地面油污-20230515-02.jpg</filename>
+	<path>D:\biandian\地面油污\地面油污（视频）\220kV 大横站-地面油污-20230515-02.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>704</width>
+		<height>576</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>张孔润</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>70</xmin>
+			<ymin>77</ymin>
+			<xmax>701</xmax>
+			<ymax>576</ymax>
+		</bndbox>
+	</object>
+</annotation>

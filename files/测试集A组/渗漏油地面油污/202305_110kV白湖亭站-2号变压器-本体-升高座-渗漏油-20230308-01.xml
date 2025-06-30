@@ -1,0 +1,29 @@
+<annotation>
+	<folder>可见光样本</folder>
+	<filename>110kV 白湖亭站-2号变压器-本体-升高座-渗漏油-20230308-01.jpg</filename>
+	<path>F:\每日工作\110kV\可见光样本\110kV 白湖亭站-2号变压器-本体-升高座-渗漏油-20230308-01.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>2736</width>
+		<height>3648</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>胡诚伟</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>8</xmin>
+			<ymin>560</ymin>
+			<xmax>2666</xmax>
+			<ymax>3216</ymax>
+		</bndbox>
+	</object>
+</annotation>

@@ -1,0 +1,29 @@
+<annotation>
+	<folder>三明700</folder>
+	<filename>35kV 均口变-1号变压器-冷却器系统-冷却器系统-渗漏油-20230625-01.JPG</filename>
+	<path>F:\三明700\35kV 均口变-1号变压器-冷却器系统-冷却器系统-渗漏油-20230625-01.JPG</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>3888</width>
+		<height>5184</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>陈钰霞</label_person>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>sly_bjbmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>40</xmin>
+			<ymin>1119</ymin>
+			<xmax>3888</xmax>
+			<ymax>5147</ymax>
+		</bndbox>
+	</object>
+</annotation>

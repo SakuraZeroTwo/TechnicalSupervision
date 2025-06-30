@@ -1,0 +1,43 @@
+<annotation>
+	<folder>宁德602</folder>
+	<filename>35kV-礼门站-地面油污-20230529-08.jpg</filename>
+	<path>D:\Backup\桌面\新建文件夹 (4)\变电标签演示\变电样本6月份（7家单位）\宁德602\35kV-礼门站-地面油污-20230529-08.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>3000</width>
+		<height>4000</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>李浩</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>421</xmin>
+			<ymin>1267</ymin>
+			<xmax>1661</xmax>
+			<ymax>1668</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1198</xmin>
+			<ymin>2121</ymin>
+			<xmax>1841</xmax>
+			<ymax>2676</ymax>
+		</bndbox>
+	</object>
+</annotation>

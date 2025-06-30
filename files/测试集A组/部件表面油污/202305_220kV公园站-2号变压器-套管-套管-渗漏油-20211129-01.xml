@@ -1,0 +1,30 @@
+<annotation>
+	<folder>可见光样本2</folder>
+	<filename>220kV 公园站-2号变压器-套管-套管-渗漏油-20211129-01.jpg</filename>
+	<path>E:\设备处变电设备标注（本周内优先标注完成）\福州\220kV（2）\220kV（2）\可见光样本2\220kV 公园站-2号变压器-套管-套管-渗漏油-20211129-01.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1279</width>
+		<height>1706</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<detect_model>bd_defect</detect_model>
+	<label_person>陈钰霞</label_person>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>sly_bjbmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>247</xmin>
+			<ymin>470</ymin>
+			<xmax>945</xmax>
+			<ymax>735</ymax>
+		</bndbox>
+	</object>
+</annotation>

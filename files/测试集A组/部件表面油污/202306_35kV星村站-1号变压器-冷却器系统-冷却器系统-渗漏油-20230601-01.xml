@@ -1,0 +1,29 @@
+<annotation>
+	<folder>007变压器-冷却器系统-冷却器系统-渗漏油</folder>
+	<filename>35kV 星村站-1号变压器-冷却器系统-冷却器系统-渗漏油-20230601-01.jpg</filename>
+	<path>F:\新建文件夹 (2)\南平5\007变压器-冷却器系统-冷却器系统-渗漏油\35kV 星村站-1号变压器-冷却器系统-冷却器系统-渗漏油-20230601-01.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>4000</width>
+		<height>3000</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>陈钰霞</label_person>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>sly_bjbmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>11</xmin>
+			<ymin>309</ymin>
+			<xmax>3956</xmax>
+			<ymax>1645</ymax>
+		</bndbox>
+	</object>
+</annotation>

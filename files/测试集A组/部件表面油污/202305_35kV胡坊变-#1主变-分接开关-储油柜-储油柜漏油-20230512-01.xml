@@ -1,0 +1,30 @@
+<annotation>
+	<folder>JPEGImages</folder>
+	<filename>35kV胡坊变-#1主变-分接开关-储油柜-储油柜漏油-20230512-01.jpg</filename>
+	<path>G:\设备处变电设备标注（本周内优先标注完成）\三明\JPEGImages\35kV胡坊变-#1主变-分接开关-储油柜-储油柜漏油-20230512-01.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1702</width>
+		<height>1276</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<detect_model>bd_defect</detect_model>
+	<label_person>黄事豪</label_person>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>部件表面油污</name_cn>
+		<score>0.39</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>712</xmin>
+			<ymin>435</ymin>
+			<xmax>1268</xmax>
+			<ymax>836</ymax>
+		</bndbox>
+	</object>
+</annotation>

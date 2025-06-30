@@ -1,0 +1,44 @@
+<annotation>
+	<folder>可见光样本1</folder>
+	<filename>220kV 长坪变-#1主变 地面油污.jpg</filename>
+	<path>C:\Users\DKY8304\Desktop\变电福州\220kV（1）\可见光样本1\220kV 长坪变-#1主变 地面油污.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1280</width>
+		<height>1706</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<detect_model>bd_defect</detect_model>
+	<label_person>胡诚伟</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>552</xmin>
+			<ymin>1248</ymin>
+			<xmax>969</xmax>
+			<ymax>1484</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>cysb_lqq</name>
+		<name_cn>cysb_lqq</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>9</xmin>
+			<ymin>4</ymin>
+			<xmax>1275</xmax>
+			<ymax>916</ymax>
+		</bndbox>
+	</object>
+</annotation>

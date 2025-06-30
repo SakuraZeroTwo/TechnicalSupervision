@@ -1,0 +1,30 @@
+<annotation>
+	<folder>可见光样本</folder>
+	<filename>220kV内官变-1号主变-冷却器系统-散热片-地面油污-20230506-02.jpg</filename>
+	<path>G:\设备处变电设备标注（本周内优先标注完成）\厦门\厦门公司样本收集\220kV 内官站\可见光样本\220kV内官变-1号主变-冷却器系统-散热片-地面油污-20230506-02.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>915</width>
+		<height>1626</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<detect_model>sd_defect</detect_model>
+	<label_person>任凭</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>132</xmin>
+			<ymin>1085</ymin>
+			<xmax>822</xmax>
+			<ymax>1590</ymax>
+		</bndbox>
+	</object>
+</annotation>

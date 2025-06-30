@@ -1,0 +1,29 @@
+<annotation>
+	<folder>厦门700</folder>
+	<filename>220kV梧侣变-变压器-冷却器系统-冷却器系统-变压器冷却器系统渗漏油5.jpg</filename>
+	<path>F:\每日工作\厦门700\220kV梧侣变-变压器-冷却器系统-冷却器系统-变压器冷却器系统渗漏油5.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>3264</width>
+		<height>2448</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>胡诚伟</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>585</xmin>
+			<ymin>1992</ymin>
+			<xmax>2022</xmax>
+			<ymax>2448</ymax>
+		</bndbox>
+	</object>
+</annotation>

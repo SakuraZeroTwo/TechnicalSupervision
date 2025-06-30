@@ -1,0 +1,57 @@
+<annotation>
+	<folder>宁德602</folder>
+	<filename>35kV 管阳变-1号主变-主变-本体-漏油-20230515-75.jpg</filename>
+	<path>D:\Backup\桌面\新建文件夹 (4)\变电标签演示\变电样本6月份（7家单位）\宁德602\35kV 管阳变-1号主变-主变-本体-漏油-20230515-75.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>3072</width>
+		<height>4096</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>李浩</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>121</xmin>
+			<ymin>2053</ymin>
+			<xmax>2127</xmax>
+			<ymax>3535</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>hxq_gjzc</name>
+		<name_cn>hxq_gjzc</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1444</xmin>
+			<ymin>933</ymin>
+			<xmax>1795</xmax>
+			<ymax>1482</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>ywzt_yfzc</name>
+		<name_cn>ywzt_yfzc</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1513</xmin>
+			<ymin>1458</ymin>
+			<xmax>1735</xmax>
+			<ymax>1681</ymax>
+		</bndbox>
+	</object>
+</annotation>

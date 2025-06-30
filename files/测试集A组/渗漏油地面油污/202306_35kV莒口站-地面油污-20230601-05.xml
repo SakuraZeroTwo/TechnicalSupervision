@@ -1,0 +1,29 @@
+<annotation>
+	<folder>015地面油污</folder>
+	<filename>35kV 莒口站-地面油污-20230601-05.jpg</filename>
+	<path>F:\新建文件夹 (2)\南平5\015地面油污\35kV 莒口站-地面油污-20230601-05.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>3000</width>
+		<height>4000</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>陈钰霞</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>845</xmin>
+			<ymin>1491</ymin>
+			<xmax>2476</xmax>
+			<ymax>2717</ymax>
+		</bndbox>
+	</object>
+</annotation>

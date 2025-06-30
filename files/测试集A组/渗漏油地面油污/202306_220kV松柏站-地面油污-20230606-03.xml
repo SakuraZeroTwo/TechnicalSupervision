@@ -1,0 +1,29 @@
+<annotation>
+	<folder>厦门700</folder>
+	<filename>220kV 松柏站-地面油污-20230606-03.jpg</filename>
+	<path>F:\每日工作\厦门700\220kV 松柏站-地面油污-20230606-03.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>3000</width>
+		<height>4000</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>胡诚伟</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1484</xmin>
+			<ymin>3526</ymin>
+			<xmax>2284</xmax>
+			<ymax>4000</ymax>
+		</bndbox>
+	</object>
+</annotation>

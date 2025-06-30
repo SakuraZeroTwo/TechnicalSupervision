@@ -1,0 +1,29 @@
+<annotation>
+	<folder>三明无效</folder>
+	<filename>35kV 曹田站-2号变压器-套管-套管-渗漏油-20230625-02.jpg</filename>
+	<path>F:\三明无效\35kV 曹田站-2号变压器-套管-套管-渗漏油-20230625-02.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>4032</width>
+		<height>3024</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>陈钰霞</label_person>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>sly_bjbmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>3240</xmin>
+			<ymin>1182</ymin>
+			<xmax>3872</xmax>
+			<ymax>2199</ymax>
+		</bndbox>
+	</object>
+</annotation>

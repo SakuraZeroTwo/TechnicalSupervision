@@ -1,0 +1,29 @@
+<annotation>
+	<folder>三明700</folder>
+	<filename>35kV 南霞变-1号变压器-地面油污-20230625-02.JPG</filename>
+	<path>F:\三明700\35kV 南霞变-1号变压器-地面油污-20230625-02.JPG</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>4608</width>
+		<height>3456</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>陈钰霞</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1664</xmin>
+			<ymin>2746</ymin>
+			<xmax>3260</xmax>
+			<ymax>3456</ymax>
+		</bndbox>
+	</object>
+</annotation>

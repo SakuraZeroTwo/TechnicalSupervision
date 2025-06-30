@@ -1,0 +1,29 @@
+<annotation>
+	<folder>JPEGImages</folder>
+	<filename>202306_110kV马江站-2号变压器-非电量保护-气体继电器-渗漏油-20230625-01.jpg</filename>
+	<path>\\22.53.1.228\share\model_data\图像\03变电\设备处熊佳丽变电\2024\24年9类变电\sly_bjbmyw	Z\JPEGImages\202306_110kV马江站-2号变压器-非电量保护-气体继电器-渗漏油-20230625-01.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>4032</width>
+		<height>3024</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person/>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>sly_bjbmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>458</xmin>
+			<ymin>13</ymin>
+			<xmax>3309</xmax>
+			<ymax>3024</ymax>
+		</bndbox>
+	</object>
+</annotation>

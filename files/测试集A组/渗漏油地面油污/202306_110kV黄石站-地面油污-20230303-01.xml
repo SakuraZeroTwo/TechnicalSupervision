@@ -1,0 +1,29 @@
+<annotation>
+	<folder>莆田700zkr</folder>
+	<filename>110kV 黄石站-地面油污-20230303-01.JPG</filename>
+	<path>D:\输电\莆田700zkr\110kV 黄石站-地面油污-20230303-01.JPG</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>4000</width>
+		<height>3000</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>张孔润</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1211</xmin>
+			<ymin>751</ymin>
+			<xmax>2965</xmax>
+			<ymax>2263</ymax>
+		</bndbox>
+	</object>
+</annotation>

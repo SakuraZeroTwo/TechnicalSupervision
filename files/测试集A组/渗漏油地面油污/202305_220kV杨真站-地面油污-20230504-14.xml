@@ -1,0 +1,57 @@
+<annotation>
+	<folder>无人机</folder>
+	<filename>220kV 杨真站-地面油污-20230504-14.JPG</filename>
+	<path>D:\biandian\地面油污\无人机\220kV 杨真站-地面油污-20230504-14.JPG</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>8000</width>
+		<height>6000</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>张孔润</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>4204</xmin>
+			<ymin>3772</ymin>
+			<xmax>4743</xmax>
+			<ymax>4213</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>4275</xmin>
+			<ymin>4311</ymin>
+			<xmax>4736</xmax>
+			<ymax>4466</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>3662</xmin>
+			<ymin>3951</ymin>
+			<xmax>4072</xmax>
+			<ymax>4077</ymax>
+		</bndbox>
+	</object>
+</annotation>

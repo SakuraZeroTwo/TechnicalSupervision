@@ -1,0 +1,43 @@
+<annotation>
+	<folder>JPEGImages</folder>
+	<filename>202306_110kV洪塘头变-#2变压器-本体-储油柜-渗漏油-20230101-03.jpg</filename>
+	<path>\\22.53.1.228\share\model_data\图像\03变电\设备处熊佳丽变电\2024\24年9类变电\sly_bjbmyw	Z\JPEGImages\202306_110kV洪塘头变-#2变压器-本体-储油柜-渗漏油-20230101-03.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1080</width>
+		<height>2010</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person/>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>sly_bjbmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>300</xmin>
+			<ymin>244</ymin>
+			<xmax>990</xmax>
+			<ymax>2010</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>cysb_cyg</name>
+		<name_cn>cysb_cyg</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>285</xmin>
+			<ymin>153</ymin>
+			<xmax>908</xmax>
+			<ymax>1756</ymax>
+		</bndbox>
+	</object>
+</annotation>

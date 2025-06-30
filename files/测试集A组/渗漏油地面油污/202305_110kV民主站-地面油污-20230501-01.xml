@@ -1,0 +1,44 @@
+<annotation>
+	<folder>可见光样本</folder>
+	<filename>110kV 民主站-地面油污-20230501-01.jpg</filename>
+	<path>D:\漳州\漳州缺陷样本库\2023年5月\110kV 民主站\可见光样本\110kV 民主站-地面油污-20230501-01.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>810</width>
+		<height>1080</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<detect_model>bd_defect</detect_model>
+	<label_person>黄事豪</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>159</xmin>
+			<ymin>720</ymin>
+			<xmax>686</xmax>
+			<ymax>908</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>121</xmin>
+			<ymin>427</ymin>
+			<xmax>231</xmax>
+			<ymax>566</ymax>
+		</bndbox>
+	</object>
+</annotation>

@@ -1,0 +1,43 @@
+<annotation>
+	<folder>JPEGImages</folder>
+	<filename>202306_110kV莲花变-#1变压器-变压器冷却器系统渗漏油，部件表面油污-20230625-01.jpg</filename>
+	<path>\\22.53.1.228\share\model_data\图像\03变电\设备处熊佳丽变电\2024\24年9类变电\sly_bjbmyw	Z\JPEGImages\202306_110kV莲花变-#1变压器-变压器冷却器系统渗漏油，部件表面油污-20230625-01.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>4608</width>
+		<height>3456</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person/>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>2137</xmin>
+			<ymin>2413</ymin>
+			<xmax>3201</xmax>
+			<ymax>3195</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>sly_bjbmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1</xmin>
+			<ymin>1</ymin>
+			<xmax>4608</xmax>
+			<ymax>2157</ymax>
+		</bndbox>
+	</object>
+</annotation>

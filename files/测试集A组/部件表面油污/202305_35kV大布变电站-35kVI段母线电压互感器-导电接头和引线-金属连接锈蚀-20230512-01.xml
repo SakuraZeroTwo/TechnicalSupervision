@@ -1,0 +1,30 @@
+<annotation>
+	<folder>JPEGImages</folder>
+	<filename>35kV大布变电站-35kVI段母线电压互感器-导电接头和引线-金属连接锈蚀-20230512-01.jpg</filename>
+	<path>G:\标注\三明\JPEGImages\35kV大布变电站-35kVI段母线电压互感器-导电接头和引线-金属连接锈蚀-20230512-01.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>2736</width>
+		<height>3648</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<detect_model>bd_defect</detect_model>
+	<label_person>黄事豪</label_person>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>部件表面油污</name_cn>
+		<score>0.26</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>966</xmin>
+			<ymin>794</ymin>
+			<xmax>1735</xmax>
+			<ymax>1454</ymax>
+		</bndbox>
+	</object>
+</annotation>

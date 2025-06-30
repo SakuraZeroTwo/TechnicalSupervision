@@ -1,0 +1,44 @@
+<annotation>
+	<folder>JPEGImages</folder>
+	<filename>110kV 梅林站-#2主变-本体底座下地面油污-20230510-02.jpg</filename>
+	<path>G:\设备处变电设备标注（本周内优先标注完成）\三明\JPEGImages\110kV 梅林站-#2主变-本体底座下地面油污-20230510-02.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1280</width>
+		<height>2844</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<detect_model>bd_defect</detect_model>
+	<label_person>任凭</label_person>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>部件表面油污</name_cn>
+		<score>0.23</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>24</xmin>
+			<ymin>7</ymin>
+			<xmax>1220</xmax>
+			<ymax>521</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>地面油污</name_cn>
+		<score>0.54</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>23</xmin>
+			<ymin>1581</ymin>
+			<xmax>1255</xmax>
+			<ymax>2844</ymax>
+		</bndbox>
+	</object>
+</annotation>

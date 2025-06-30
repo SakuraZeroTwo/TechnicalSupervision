@@ -1,0 +1,30 @@
+<annotation>
+	<folder>JPEGImages</folder>
+	<filename>35kV 龙安变电站-1号变压器-分接开关-储油柜-渗漏油-20230512-01.jpg</filename>
+	<path>G:\设备处变电设备标注（本周内优先标注完成）\三明\JPEGImages\35kV 龙安变电站-1号变压器-分接开关-储油柜-渗漏油-20230512-01.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>4624</width>
+		<height>3468</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<detect_model>bd_defect</detect_model>
+	<label_person>黄事豪</label_person>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>部件表面油污</name_cn>
+		<score>0.63</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1554</xmin>
+			<ymin>93</ymin>
+			<xmax>4624</xmax>
+			<ymax>2095</ymax>
+		</bndbox>
+	</object>
+</annotation>

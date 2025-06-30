@@ -1,0 +1,29 @@
+<annotation>
+	<folder>视屏</folder>
+	<filename>220kV 大横站-1号变压器-本体-储油柜-渗漏油-20230503-07.jpg.jpg</filename>
+	<path>D:\biandian\变压器-本体-储油柜-渗漏油\视屏\220kV 大横站-1号变压器-本体-储油柜-渗漏油-20230503-07.jpg.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1280</width>
+		<height>720</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>张孔润</label_person>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>sly_bjbmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1</xmin>
+			<ymin>385</ymin>
+			<xmax>328</xmax>
+			<ymax>720</ymax>
+		</bndbox>
+	</object>
+</annotation>

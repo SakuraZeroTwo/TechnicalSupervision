@@ -1,0 +1,30 @@
+<annotation>
+	<folder>可见光样本</folder>
+	<filename>220kV 北塘站-地面油污-20230426-05.jpg</filename>
+	<path>C:\Users\Administrator\Desktop\已做完\漳州\漳州缺陷样本库\2023年5月\220kV 北塘站\可见光样本\220kV 北塘站-地面油污-20230426-05.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1279</width>
+		<height>1706</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<detect_model>bd_defect</detect_model>
+	<label_person>黄事豪</label_person>
+	<object>
+		<name>sly_dmyw</name>
+		<name_cn>sly_dmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>29</xmin>
+			<ymin>711</ymin>
+			<xmax>1272</xmax>
+			<ymax>1706</ymax>
+		</bndbox>
+	</object>
+</annotation>

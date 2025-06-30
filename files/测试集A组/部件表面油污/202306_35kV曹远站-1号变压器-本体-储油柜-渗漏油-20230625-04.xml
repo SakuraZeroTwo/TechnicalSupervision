@@ -1,0 +1,43 @@
+<annotation>
+	<folder>三明700</folder>
+	<filename>35kV 曹远站-1号变压器-本体-储油柜-渗漏油-20230625-04.jpg</filename>
+	<path>F:\三明700\35kV 曹远站-1号变压器-本体-储油柜-渗漏油-20230625-04.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>4032</width>
+		<height>3024</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<label_person>陈钰霞</label_person>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>sly_bjbmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1621</xmin>
+			<ymin>1476</ymin>
+			<xmax>2343</xmax>
+			<ymax>1812</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>sly_bjbmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>2209</xmin>
+			<ymin>1811</ymin>
+			<xmax>2396</xmax>
+			<ymax>1901</ymax>
+		</bndbox>
+	</object>
+</annotation>

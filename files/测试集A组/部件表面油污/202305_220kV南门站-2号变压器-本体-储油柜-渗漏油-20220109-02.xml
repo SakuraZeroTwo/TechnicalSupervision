@@ -1,0 +1,44 @@
+<annotation>
+	<folder>可见光样本1</folder>
+	<filename>220kV 南门站-2号变压器-本体-储油柜-渗漏油-20220109-02.jpg</filename>
+	<path>C:\Users\DKY8304\Desktop\变电福州\220kV（1）\可见光样本1\220kV 南门站-2号变压器-本体-储油柜-渗漏油-20220109-02.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1276</width>
+		<height>1702</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<detect_model>bd_defect</detect_model>
+	<label_person>胡诚伟</label_person>
+	<object>
+		<name>sly_bjbmyw</name>
+		<name_cn>sly_bjbmyw</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>217</xmin>
+			<ymin>477</ymin>
+			<xmax>1253</xmax>
+			<ymax>1702</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>cysb_sgz</name>
+		<name_cn>cysb_sgz</name_cn>
+		<score>1.0</score>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>484</xmin>
+			<ymin>107</ymin>
+			<xmax>837</xmax>
+			<ymax>393</ymax>
+		</bndbox>
+	</object>
+</annotation>
