@@ -21,7 +21,7 @@ def encode_image_to_base64(image_path: str) -> str:
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-def get_vlm_analysis(prompt_text: str, image_path: str) -> dict:
+def get_vlm_analysis(prompt_text: str, image_path: str, stage: str = None) -> dict:
     """
     调用 qwen-vl-max 模型获取对图片和文本的分析
     使用 OpenAI SDK 兼容模式
@@ -29,6 +29,7 @@ def get_vlm_analysis(prompt_text: str, image_path: str) -> dict:
     Args:
         prompt_text: 用户的输入文本描述
         image_path: 用户上传的图片文件路径
+        stage: 问题阶段（如规划可研、设计等）
 
     Returns:
         模型的响应结果 (JSON) 或包含错误的字典。
@@ -36,6 +37,21 @@ def get_vlm_analysis(prompt_text: str, image_path: str) -> dict:
     if not client:
         return {"error": "OpenAI 客户端未初始化。"}
 
+    enhanced_prompt = f"""
+    你是一个资深的电力设备巡检专家。请根据以下用户描述和图片，完成以下分析任务：
+
+    1. **扩写描述**: 根据图片扩写用户描述，使描述更加专业、全面。
+    2. **状态描述**: 详细描述设备的状态，判断严重程度（例如：一般、严重）。
+    3. **原因分析**: 分析可能导致该问题的潜在原因。
+    4. **阶段识别**: {f'问题属于用户指定的"{stage}"阶段' if stage else '识别该问题可能出现的阶段（如规划可研阶段、设计阶段、安装调试阶段、运行维护阶段等）'}。
+    5. **相关条例**: 可能关联的电力技术监督条例或安全规程编号（例如：DL/T 596-2021）。
+    6. **监督意见**: 提出具体的处理建议或监督意见。
+    7. **实体提取**: 识别描述和图片中的核心实体（设备名称、问题类型、部件等），以便后续检索相关文档。
+
+    请将你的回答以 JSON 格式返回，包含以下键：'enhanced_description', 'status_description', 'cause_analysis', 'stage', 'regulations', 'supervision_suggestion', 'entities'。
+
+    用户描述: "{prompt_text}"
+    """
     # 1. 将图片编码为 Base64
     try:
         base64_image = encode_image_to_base64(image_path)
@@ -52,13 +68,12 @@ def get_vlm_analysis(prompt_text: str, image_path: str) -> dict:
                 {
                     "type": "image_url",
                     "image_url": {
-                        # 根据图片格式动态设置 MIME 类型，这里以 jpeg 为例
                         "url": f"data:image/jpeg;base64,{base64_image}"
                     }
                 },
                 {
                     "type": "text",
-                    "text": prompt_text
+                    "text": enhanced_prompt
                 }
             ]
         }

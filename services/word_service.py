@@ -48,14 +48,6 @@ def add_formatted_heading(document, text, level=1, font_size=14):
 def create_word_report(data: dict, image_path: str) -> str:
     """
     根据分析数据和图片生成 Word 报告.
-
-    Args:
-        data (dict): 包含报告所需内容的字典.
-                     例如: {'description': '...', 'analysis': '...', 'suggestions': '...'}
-        image_path (str): 要插入报告中的图片路径.
-
-    Returns:
-        str: 生成的 .docx 文件路径.
     """
     document = Document()
 
@@ -80,31 +72,69 @@ def create_word_report(data: dict, image_path: str) -> str:
         bold=False
     )
 
+    # 新增：添加阶段信息
+    if 'stage' in data and data['stage']:
+        add_formatted_paragraph(
+            document,
+            f"问题阶段: {data['stage']}",
+            font_size=12,
+            bold=False
+        )
+
     add_formatted_paragraph(document, "-" * 20, font_size=12, bold=False)
 
-    # --- 问题描述 ---
-    add_formatted_heading(document, '1. 问题描述', level=1, font_size=14)
+    # --- 原始问题描述 ---
+    add_formatted_heading(document, '1. 原始问题描述', level=1, font_size=14)
     add_formatted_paragraph(document, data.get('description', '无'), font_size=12, bold=False)
 
-    # --- 问题照片 ---
-    add_formatted_heading(document, '2. 问题照片', level=1, font_size=14)
+    # --- 新增：扩写后描述 ---
+    if 'enhanced_description' in data and data['enhanced_description']:
+        add_formatted_heading(document, '2. 扩写描述', level=1, font_size=14)
+        add_formatted_paragraph(document, data.get('enhanced_description', '无'), font_size=12, bold=False)
 
+    # --- 问题照片 ---
+    add_formatted_heading(document, '3. 问题照片', level=1, font_size=14)
     try:
         document.add_picture(image_path, width=Inches(5.0))
     except FileNotFoundError:
         add_formatted_paragraph(document, "图片文件未找到。", font_size=12, bold=False)
 
+    # --- 状态描述 ---
+    add_formatted_heading(document, '4. 状态描述', level=1, font_size=14)
+    add_formatted_paragraph(document, data.get('status_description', '无'), font_size=12, bold=False)
+
     # --- 原因分析 ---
-    add_formatted_heading(document, '3. 原因分析 (VLM)', level=1, font_size=14)
+    add_formatted_heading(document, '5. 原因分析', level=1, font_size=14)
     add_formatted_paragraph(document, data.get('analysis', '无'), font_size=12, bold=False)
 
     # --- 监督意见 ---
-    add_formatted_heading(document, '4. 监督意见', level=1, font_size=14)
+    add_formatted_heading(document, '6. 监督意见', level=1, font_size=14)
     add_formatted_paragraph(document, data.get('suggestions', '无'), font_size=12, bold=False)
 
     # --- 相关条例 ---
-    add_formatted_heading(document, '5. 相关技术细则', level=1, font_size=14)
-    add_formatted_paragraph(document, data.get('regulations', '无'), font_size=12, bold=False)
+    add_formatted_heading(document, '7. 相关技术条例', level=1, font_size=14)
+    if 'regulations' in data and data['regulations']:
+        for idx, reg in enumerate(data['regulations'], 1):
+            # 添加条例标题
+            add_formatted_paragraph(document, f"{idx}. {reg['title']}", font_size=12, bold=True)
+
+            # 添加监督依据
+            if reg['basis']:
+                add_formatted_paragraph(document, f"监督依据: {reg['basis']}", font_size=11)
+
+            # 添加监督要点
+            if reg['points']:
+                add_formatted_paragraph(document, f"监督要点: {reg['points']}", font_size=11)
+
+            # 添加监督要求
+            if reg['requirements']:
+                add_formatted_paragraph(document, f"监督要求: {reg['requirements']}", font_size=11)
+
+            # 添加分隔符
+            if idx < len(data['regulations']):
+                add_formatted_paragraph(document, "-" * 40, font_size=10)
+    else:
+        add_formatted_paragraph(document, "未找到相关技术监督条例", font_size=12)
 
     # --- 保存文件 ---
     output_filename = f"report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
