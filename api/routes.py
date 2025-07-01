@@ -14,7 +14,7 @@ from services.vlm_service import get_vlm_analysis
 # from services.neo4j_service import neo4j_service # neo4j服务已不再使用
 from services.word_service import create_word_report
 from services.file_service import file_service
-from utils.format_converter import prepare_report_data_for_word, prepare_report_data_for_frontend
+
 
 # 创建一个蓝图
 api_bp = Blueprint('api', __name__)
@@ -42,6 +42,9 @@ def analyze_issue():
 
     # 获取阶段参数
     stage = request.form.get('stage', None)
+
+    # 是否生成报告
+    generate_word = request.form.get('generate_word', 'true').lower() == 'true'
 
     file = request.files['image']
     if file.filename == '' or not allowed_file(file.filename):
@@ -112,31 +115,133 @@ def analyze_issue():
         # file_service 返回的结果已经按相关性排序，直接取第一个即可
         best_regulation = retrieved_regulations[0]
 
-    # 8. 准备 Word 报告所需的数据 (精确、简化)
-    word_report_data = {
-        'stage': recognized_stage,
-        'regulation': best_regulation,  # 传递选出的最佳条例字典
-        'description': enhanced_description,  # 使用扩写后的描述
-        'analysis': analysis_content.get('cause_analysis', ''),
-        'suggestions': analysis_content.get('supervision_suggestion', ''),
-    }
-
-    # 9. 生成 Word 报告
-    report_path = create_word_report(word_report_data, image_path)
-    report_url = request.host_url + 'api/static/reports/' + os.path.basename(report_path)
-
-    # 10. 组合最终响应
+    # 8. 准备最终响应
     final_response = {
         "vlm_analysis": analysis_content,
         "historical_cases": file_service.find_historical_cases_by_entities(entities_list, recognized_stage),
-        "regulations": [best_regulation] if best_regulation else [],  # 返回给前端的也只是最佳条例
+        "regulations": [best_regulation] if best_regulation else [],
         "subgraph": file_service.get_subgraph_for_entities(entities_list),
-        "report_url": report_url
     }
+
+    # 9. 生成Markdown格式内容
+    final_response["markdown"] = generate_custom_markdown(
+        analysis_content,
+        [best_regulation] if best_regulation else [],
+        final_response["historical_cases"],
+        final_response.get("report_url")
+    )
+
+    # 10. 如果需要生成Word报告
+    if generate_word:
+        word_report_data = {
+            'stage': recognized_stage,
+            'regulation': best_regulation,
+            'description': enhanced_description,
+            'analysis': analysis_content.get('cause_analysis', ''),
+            'suggestions': analysis_content.get('supervision_suggestion', ''),
+        }
+        report_path = create_word_report(word_report_data, image_path)
+        report_url = request.host_url + 'api/static/reports/' + os.path.basename(report_path)
+        final_response["report_url"] = report_url
+
+        # 更新Markdown内容以包含报告链接
+        final_response["markdown"] = generate_custom_markdown(
+            analysis_content,
+            [best_regulation] if best_regulation else [],
+            final_response["historical_cases"],
+            report_url
+        )
 
     return jsonify(final_response)
 
+# 生成自定义markdown内容
+def generate_custom_markdown(vlm_analysis, regulations=None, historical_cases=None, report_url=None):
+    """生成专注于大模型分析结果的Markdown"""
+    markdown = []
 
+    # 添加标题
+    markdown.append("# 电力设备技术监督分析报告\n")
+
+    # 添加问题描述
+    if "enhanced_description" in vlm_analysis:
+        markdown.append("## 问题描述\n")
+        markdown.append(vlm_analysis["enhanced_description"])
+        markdown.append("\n")
+
+    # 添加设备状态评估（强调严重性）
+    if "status_description" in vlm_analysis:
+        markdown.append("## 设备状态评估\n")
+        status_text = vlm_analysis["status_description"]
+        # 尝试提取或标记严重程度
+        if "严重" in status_text:
+            markdown.append("**严重程度: 严重** ⚠️\n")
+        elif "一般" in status_text:
+            markdown.append("**严重程度: 一般** ℹ️\n")
+        else:
+            markdown.append("**严重程度: 需进一步评估** ⚠️\n")
+        markdown.append(status_text)
+        markdown.append("\n")
+
+    # 添加漏油可能性评估（如果有相关内容）
+    cause_analysis = vlm_analysis.get("cause_analysis", "")
+    if "漏油" in cause_analysis or "渗油" in cause_analysis:
+        markdown.append("## 漏油可能性分析\n")
+        # 尝试从原因分析中提取与漏油相关的内容
+        if "高" in cause_analysis and ("可能" in cause_analysis or "风险" in cause_analysis):
+            markdown.append("**漏油风险评估: 高风险** ⚠️\n")
+        elif "低" in cause_analysis and ("可能" in cause_analysis or "风险" in cause_analysis):
+            markdown.append("**漏油风险评估: 低风险** ℹ️\n")
+        else:
+            markdown.append("**漏油风险评估: 需监测** ⚠️\n")
+        markdown.append(cause_analysis)
+        markdown.append("\n")
+    else:
+        # 如果没有明确提到漏油，仍然保留原因分析部分
+        markdown.append("## 原因分析\n")
+        markdown.append(cause_analysis)
+        markdown.append("\n")
+
+    # 添加监督建议
+    if "supervision_suggestion" in vlm_analysis:
+        markdown.append("## 监督建议\n")
+        markdown.append(vlm_analysis["supervision_suggestion"])
+        markdown.append("\n")
+
+    # 添加阶段信息
+    if "stage" in vlm_analysis:
+        markdown.append(f"**适用阶段**: {vlm_analysis['stage']}")
+        markdown.append("\n")
+
+    # 添加规范参考（简化显示）
+    if regulations and len(regulations) > 0:
+        markdown.append("## 相关技术规范\n")
+        reg = regulations[0]
+        markdown.append(f"### {reg.get('title', '技术规范')}\n")
+        if reg.get("basis"):
+            markdown.append(f"**监督依据**: {reg['basis']}\n")
+        if reg.get("requirements"):
+            markdown.append(f"**监督要求**: {reg['requirements']}\n")
+        markdown.append("\n")
+
+    # 添加历史案例（简化显示，只展示最相关的2-3个）
+    if historical_cases and len(historical_cases) > 0:
+        markdown.append("## 相似历史案例\n")
+        for i, case in enumerate(historical_cases[:3], 1):
+            markdown.append(f"### 案例 {i}: {case.get('title', '未命名案例')}\n")
+            if case.get("description"):
+                # 截取简短描述
+                desc = case['description']
+                short_desc = desc[:100] + "..." if len(desc) > 100 else desc
+                markdown.append(f"**问题概述**: {short_desc}\n")
+            if case.get("solution") and case["solution"] != "未提供解决方案":
+                markdown.append(f"**解决方案**: {case['solution'][:150]}...\n")
+            markdown.append("\n")
+
+    # 添加报告下载链接
+    if report_url:
+        markdown.append(f"## 完整报告\n[点击下载详细Word报告]({report_url})\n")
+
+    return "\n".join(markdown)
 # 添加阶段获取端点
 @api_bp.route('/stages', methods=['GET'])
 def get_available_stages():
