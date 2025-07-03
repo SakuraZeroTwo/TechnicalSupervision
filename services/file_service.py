@@ -4,9 +4,10 @@ import pandas as pd
 import jieba
 import re
 from docx import Document
+from services.vector_service import vector_service
 from pathlib import Path
 import json
-
+import time
 
 class FileService:
     def __init__(self):
@@ -94,6 +95,53 @@ class FileService:
         self.transformer_files = self._scan_files(self.transformer_cases_path, ['.docx', '.doc', '.pdf'])
         print(f"索引构建完成，共找到 {len(self.regulation_files)} 条技术条例文件，{len(self.case_files)} 条案例文件")
 
+        # 尝试加载向量索引缓存
+        if not vector_service.load_cache():
+            # 如果没有缓存，则首次启动时预加载所有规范进行向量化
+            print("未找到向量索引缓存，将创建新索引...")
+            self._preload_regulations_for_vector_index()
+
+    def _preload_regulations_for_vector_index(self):
+        """预加载所有规范并创建向量索引"""
+        all_regulations = []
+
+        for file_path in self.regulation_files:
+            try:
+                print(f"处理文件用于向量索引: {os.path.basename(file_path)}")
+                xls = pd.ExcelFile(file_path)
+
+                for sheet_name in xls.sheet_names:
+                    try:
+                        column_data, _ = self._find_columns_in_excel(file_path, sheet_name)
+                        if not column_data:
+                            continue
+
+                        for idx in range(len(next(iter(column_data.values())))):
+                            row_data = {}
+                            for col_name, col_data in column_data.items():
+                                if idx < len(col_data) and pd.notna(col_data.iloc[idx]):
+                                    row_data[col_name] = str(col_data.iloc[idx]).strip()
+
+                            if row_data:
+                                result = {
+                                    'title': f"{os.path.basename(file_path)} - {sheet_name}",
+                                    'basis': row_data.get('监督依据', ''),
+                                    'points': row_data.get('监督要点', ''),
+                                    'requirements': row_data.get('监督要求', ''),
+                                    'source': {
+                                        'file': os.path.basename(file_path),
+                                        'sheet': sheet_name
+                                    }
+                                }
+                                all_regulations.append(result)
+                    except Exception as e:
+                        print(f"处理工作表 {sheet_name} 时出错: {str(e)}")
+            except Exception as e:
+                print(f"处理文件 {file_path} 时出错: {str(e)}")
+
+        # 创建向量索引
+        print(f"共收集了 {len(all_regulations)} 条规范条目")
+        vector_service.index_regulations(all_regulations)
     def _scan_files(self, directory, extensions):
         """扫描指定目录下的所有符合扩展名的文件"""
         files = []
@@ -104,14 +152,83 @@ class FileService:
                         files.append(os.path.join(root, filename))
         return files
 
+    def find_regulations_by_stage_and_keywords(self, stage, keywords, max_results=5, strict_stage_match=True,
+                                               specific_file=None, use_vector_search=True):
+        """根据阶段和关键词从技术监督条例中查找相关内容，增加向量搜索功能"""
+        start_time = time.time()
+        print(
+            f"开始查询 - 阶段: {stage}, 关键词: {keywords}, 指定细则: {specific_file}, 使用向量搜索: {use_vector_search}")
 
-    def find_regulations_by_stage_and_keywords(self, stage, keywords, max_results=5):
+        if isinstance(keywords, str):
+            keywords = [keywords]
+
+        # 优化查询文本构建，增加阶段信息提高相关性
+        query_text = " ".join(keywords)
+        if stage:
+            query_text = f"{stage} {query_text}"
+
+        # 如果使用向量搜索且没有指定特定文件
+        if use_vector_search and not specific_file:
+            # 增加检索数量，以获得更多候选结果
+            vector_results = vector_service.search(query_text, top_k=max_results * 5)
+
+            # 确保有返回结果且结构正确
+            if not vector_results or not isinstance(vector_results, list):
+                print("向量搜索未返回有效结果，将使用关键词搜索作为备选")
+                return self.find_regulations_by_stage_and_keywords_traditional(stage, keywords, max_results,
+                                                                      strict_stage_match, specific_file)
+
+            # 放宽过滤条件，先不做阶段过滤
+            filtered_results = []
+            stage_filtered_count = 0
+
+            for result in vector_results:
+                # 允许接受更多结果，不设置相似度下限
+                filtered_results.append(result)
+
+                # 仅统计阶段匹配情况，不作为过滤条件
+                if stage and strict_stage_match:
+                    result_stage = result.get('stage', '')
+                    source = result.get('source', {})
+                    sheet_name = source.get('sheet', '')
+
+                    # 检查阶段匹配（宽松匹配）
+                    normalized_stage = self._normalize_stage(stage)
+                    if (normalized_stage.lower() in sheet_name.lower() or
+                            normalized_stage.lower() in result_stage.lower()):
+                        stage_filtered_count += 1
+
+            print(f"向量搜索原始结果: {len(vector_results)}条, 阶段匹配: {stage_filtered_count}条")
+
+            # 仅当有严格阶段要求时，对结果进行阶段过滤
+            if stage and strict_stage_match and stage_filtered_count > 0:
+                strict_results = []
+                for result in filtered_results:
+                    result_stage = result.get('stage', '')
+                    source = result.get('source', {})
+                    sheet_name = source.get('sheet', '')
+
+                    normalized_stage = self._normalize_stage(stage)
+                    if (normalized_stage.lower() in sheet_name.lower() or
+                            normalized_stage.lower() in result_stage.lower()):
+                        strict_results.append(result)
+
+                filtered_results = strict_results
+
+            print(f"向量搜索完成，找到 {len(filtered_results)} 条匹配的规范")
+            print(f"查询耗时: {time.time() - start_time:.2f}秒")
+            return filtered_results[:max_results]
+
+        # 如果指定了文件或不使用向量搜索，则回退到传统方法
+        return self.find_regulations_by_stage_and_keywords_traditional(stage, keywords, max_results, strict_stage_match,
+                                                              specific_file)
+    def find_regulations_by_stage_and_keywords_traditional(self, stage, keywords, max_results=5, strict_stage_match=True, specific_file=None):
         """根据阶段和关键词从技术监督条例中查找相关内容"""
         results = []
         processed_files = 0
         matched_files = 0
 
-        print(f"开始查询 - 阶段: {stage}, 关键词: {keywords}")
+        print(f"开始查询 - 阶段: {stage}, 关键词: {keywords}, 指定细则: {specific_file}")
 
         if isinstance(keywords, str):
             keywords = [keywords]
@@ -130,21 +247,33 @@ class FileService:
         normalized_stage = self._normalize_stage(stage)
         print(f"标准化后的阶段: {normalized_stage}")
 
-        filtered_files = []
-        for file_path in self.regulation_files:
-            file_name = os.path.basename(file_path)
-            if any(kw in file_name for kw in expanded_keywords):
-                filtered_files.append((file_path, 2))
-            elif any(kw in file_name.lower() for kw in expanded_keywords):
-                filtered_files.append((file_path, 1))
-
-        if not filtered_files:
-            print("文件名中未找到匹配关键词的条例，将搜索所有条例文件")
-            filtered_files = [(file_path, 0) for file_path in self.regulation_files]
+        # 如果指定了特定文件，只处理匹配该文件名的文件
+        if specific_file:
+            filtered_files = []
+            for file_path in self.regulation_files:
+                file_name = os.path.basename(file_path)
+                if specific_file.lower() in file_name.lower():
+                    filtered_files.append((file_path, 3))  # 给予更高的权重
+                    print(f"找到指定细则: {file_name}")
         else:
-            print(f"找到 {len(filtered_files)} 个文件名包含关键词的条例文件")
+            filtered_files = []
+            for file_path in self.regulation_files:
+                file_name = os.path.basename(file_path)
+                if any(kw in file_name for kw in expanded_keywords):
+                    filtered_files.append((file_path, 2))
+                elif any(kw in file_name.lower() for kw in expanded_keywords):
+                    filtered_files.append((file_path, 1))
+            if not filtered_files:
+                print("文件名中未找到匹配关键词的条例，将搜索所有条例文件")
+                filtered_files = [(file_path, 0) for file_path in self.regulation_files]
+            else:
+                print(f"找到 {len(filtered_files)} 个文件名包含关键词的条例文件")
 
         filtered_files.sort(key=lambda x: x[1], reverse=True)
+
+        # 如果指定了文件但没找到，返回空结果
+        if specific_file and not filtered_files:
+            return []
 
         for file_path, name_match_score in filtered_files:
             try:
@@ -158,7 +287,9 @@ class FileService:
                     if normalized_stage.lower() in sheet_name.lower():
                         target_sheets.append(sheet_name)
 
-                if not target_sheets:
+                if not target_sheets and strict_stage_match:
+                    continue
+                elif not target_sheets:
                     target_sheets = [xls.sheet_names[0]]
 
                 for sheet_name in target_sheets:
@@ -260,7 +391,7 @@ class FileService:
 
         return "运维检修"  # 默认阶段
 
-    def find_historical_cases_by_entities(self, entities, stage=None):
+    def find_historical_cases_by_entities(self, entities, stage=None, strict_stage_match = False):
         """
         根据实体关键词和可选阶段查询历史案例文档
         """
@@ -290,7 +421,10 @@ class FileService:
                     if stage and "stage" in result:
                         stage_match = self._match_stage(result.get("stage", ""), stage)
                         if not stage_match:
-                            result["match_score"] *= 0.7
+                            if strict_stage_match:
+                                continue  # 严格模式下跳过不匹配的结果
+                            else:
+                                result["match_score"] *= 0.7  # 非严格模式降低分数
 
                     results.append(result)
             except Exception as e:
@@ -366,7 +500,6 @@ class FileService:
                     "matched_keywords": matched_keywords,
                     "match_count": len(matched_keywords),
                     "title": title,
-                    "description": description,
                     "source": os.path.basename(file_path),
                 }
             return None
