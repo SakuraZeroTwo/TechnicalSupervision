@@ -32,9 +32,7 @@ def analyze_issue():
     """
     核心功能端点：接收图片、描述和阶段，返回完整分析和报告链接
     """
-    # 1. 检查文件和表单数据
-    if 'image' not in request.files:
-        return jsonify({"error": "请求中未找到图片文件"}), 400
+    # 1. 检查表单数据
 
     description = request.form.get('description', '')
     if not description:
@@ -46,14 +44,16 @@ def analyze_issue():
     # 是否生成报告
     generate_word = request.form.get('generate_word', 'true').lower() == 'true'
 
-    file = request.files['image']
-    if file.filename == '' or not allowed_file(file.filename):
-        return jsonify({"error": "无效的图片文件"}), 400
-
-    # 2. 保存上传的图片
-    filename = secure_filename(file.filename)
-    image_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-    file.save(image_path)
+    # 2.处理可选的图片
+    image_path = None
+    if 'image' in request.files and request.files['image'].filename:
+        file = request.files['image']
+        if file.filename != '' and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            image_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+            file.save(image_path)
+        elif file.filename != '':
+            return jsonify({"error": "无效的图片文件"}), 400
 
     # 3. 调用 VLM 服务进行分析,传入阶段参数
     vlm_result = get_vlm_analysis(description, image_path, stage)
@@ -120,7 +120,6 @@ def analyze_issue():
         "vlm_analysis": analysis_content,
         "historical_cases": file_service.find_historical_cases_by_entities(entities_list, recognized_stage),
         "regulations": [best_regulation] if best_regulation else [],
-        "subgraph": file_service.get_subgraph_for_entities(entities_list),
     }
 
     # 9. 生成Markdown格式内容
@@ -280,8 +279,3 @@ def search_historical_cases():
         return jsonify({"error": f"搜索失败: {str(e)}"}), 500
 
 
-@api_bp.route('/static/reports/<filename>')
-def download_report(filename):
-    """提供 Word 报告的下载链接"""
-    reports_folder = os.path.abspath(os.path.join('static', 'reports'))
-    return send_from_directory(reports_folder, filename, as_attachment=True)

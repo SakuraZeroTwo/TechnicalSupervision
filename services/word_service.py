@@ -155,7 +155,9 @@ def create_word_report(data: dict, image_input) -> str:
     set_cell_properties(table.cell(start_row_reg + 1, 2), regulation.get('clause', '待补充'))
 
     set_cell_properties(table.cell(start_row_reg + 2, 1), '*监督标准')
-    set_cell_properties(table.cell(start_row_reg + 2, 2), regulation.get('standard', '待补充'))
+    # 使用规范中的监督依据作为监督标准
+    supervision_standard = regulation.get('points', '待补充') if regulation.get('points') else '待补充'
+    set_cell_properties(table.cell(start_row_reg + 2, 2), supervision_standard)
     row_idx += 3
 
     # [cite_start]发现时间 [cite: 2]

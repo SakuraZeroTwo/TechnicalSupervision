@@ -104,14 +104,6 @@ class FileService:
                         files.append(os.path.join(root, filename))
         return files
 
-    def _text_similarity(self, text1, text2):
-        """计算两段文本的相似度，使用简单的词集合相似度"""
-        if not text1 or not text2:
-            return 0
-        words1 = set(jieba.cut(str(text1)))
-        words2 = set(jieba.cut(str(text2)))
-        common_words = words1.intersection(words2)
-        return len(common_words) / max(len(words1), len(words2), 1)
 
     def find_regulations_by_stage_and_keywords(self, stage, keywords, max_results=5):
         """根据阶段和关键词从技术监督条例中查找相关内容"""
@@ -268,141 +260,133 @@ class FileService:
 
         return "运维检修"  # 默认阶段
 
-    def _get_regulation_files(self):
-        """获取所有技术监督条例文件路径"""
-        files = []
-        for dirpath, dirnames, filenames in os.walk(self.regulations_path):
-            for filename in filenames:
-                if filename.endswith(('.xls', '.xlsx')) and not filename.startswith('~'):
-                    files.append(os.path.join(dirpath, filename))
-        return files
-
     def find_historical_cases_by_entities(self, entities, stage=None):
-        """根据实体和可选的阶段查询历史案例"""
+        """
+        根据实体关键词和可选阶段查询历史案例文档
+        """
         results = []
 
-        # 检索案例文件
-        for file_path in self.case_files + self.transformer_files:
+        # 标准化输入
+        if isinstance(entities, str):
+            entities = [entities]
+
+        print(f"检索案例 - 关键词: {entities}, 阶段: {stage}")
+
+        processed_files = 0
+        matched_files = 0
+
+        for file_path in self.case_files:
+            if not file_path.endswith(('.docx', '.doc')):
+                continue
+
             try:
-                if file_path.endswith('.docx') or file_path.endswith('.doc'):
-                    doc = Document(file_path)
-                    # 提取文档标题和内容
-                    title = doc.paragraphs[0].text if doc.paragraphs else os.path.basename(file_path)
-                    content = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+                processed_files += 1
+                # 正确调用方法，传递文件路径而非self对象
+                result = self.search_docx_for_keywords(file_path, entities)
 
-                    # 检查实体匹配
-                    match_found = any(entity in title or entity in content for entity in entities)
-                    if match_found:
-                        doc_name = os.path.basename(file_path)
-                        results.append({
-                            "title": title,
-                            "description": content[:300] + "..." if len(content) > 300 else content,
-                            "source": doc_name,
-                            "status": self._extract_status(content),
-                            "solution": self._extract_solution(content),
-                            "match_score": max(self._text_similarity(e, title + " " + content) for e in entities)
-                        })
+                if result:
+                    matched_files += 1
+                    # 如果指定了阶段，尝试进行阶段匹配
+                    if stage and "stage" in result:
+                        stage_match = self._match_stage(result.get("stage", ""), stage)
+                        if not stage_match:
+                            result["match_score"] *= 0.7
+
+                    results.append(result)
             except Exception as e:
-                print(f"处理文件 {file_path} 时出错: {e}")
+                print(f"处理文件 {file_path} 时出错: {str(e)}")
 
-        # 检索问题清单表格
-        for file_path in self.problem_files:
-            try:
-                if file_path.endswith('.xlsx') or file_path.endswith('.xls'):
-                    df = pd.read_excel(file_path)
-                    # 查找问题描述和状态列
-                    desc_col = next((col for col in df.columns if '问题' in col or '描述' in col), None)
-                    status_col = next((col for col in df.columns if '状态' in col or '进展' in col), None)
-                    solution_col = next((col for col in df.columns if '措施' in col or '解决' in col or '建议' in col),
-                                        None)
+        print(f"检索统计: 处理了{processed_files}个文件, 匹配到{matched_files}个结果")
 
-                    if desc_col:
-                        for _, row in df.iterrows():
-                            desc = str(row.get(desc_col, ''))
-                            if any(entity in desc for entity in entities):
-                                status = str(row.get(status_col, '')) if status_col else '未知'
-                                solution = str(row.get(solution_col, '')) if solution_col else '未提供解决方案'
-                                results.append({
-                                    "title": desc[:50] + "..." if len(desc) > 50 else desc,
-                                    "description": desc,
-                                    "source": os.path.basename(file_path),
-                                    "status": status,
-                                    "solution": solution,
-                                    "match_score": max(self._text_similarity(e, desc) for e in entities)
-                                })
-            except Exception as e:
-                print(f"处理文件 {file_path} 时出错: {e}")
+        # 按匹配分数排序
+        results.sort(key=lambda x: x.get("match_score", 0), reverse=True)
 
-        # 按相关性排序
-        results.sort(key=lambda x: x.get('match_score', 0), reverse=True)
+        # 返回前3个结果
+        return results[:3]
 
-        return results[:15]  # 返回最相关的15条
+    def search_docx_for_keywords(self, file_path, keywords, threshold=1):
+        """
+        在DOCX文档中搜索关键词，并返回匹配结果
 
-    def _extract_status(self, text):
-        """从案例文本中提取状态信息"""
-        if not text:
-            return "未知状态"
+        Args:
+            file_path: DOCX文件路径
+            keywords: 关键词列表或字符串
+            threshold: 最小匹配数量阈值，默认为1
 
-        if "已解决" in text or "已处理" in text or "已完成" in text:
-            return "已解决"
-        elif "处理中" in text or "进行中" in text:
-            return "处理中"
-        else:
-            return "状态未明确"
+        Returns:
+            dict: 包含匹配信息的字典，包括匹配分数、匹配到的关键词和文档信息
+        """
+        try:
+            # 如果输入是字符串，转换为列表
+            if isinstance(keywords, str):
+                keywords = [keywords]
 
-    def _extract_solution(self, text):
-        """从案例文本中提取解决方案"""
-        if not text:
-            return "未提供解决方案"
+            # 打开Word文档
+            doc = Document(file_path)
 
-        # 尝试定位解决方案部分
-        solution_patterns = ["处理措施", "解决方案", "处理方法", "解决措施", "处理建议"]
-        for pattern in solution_patterns:
-            if pattern in text:
-                start_idx = text.find(pattern)
-                end_idx = min(start_idx + 300, len(text))
-                return text[start_idx:end_idx] + "..."
+            # 提取所有文本
+            full_text = ""
+            # 从段落中提取
+            for para in doc.paragraphs:
+                full_text += para.text + "\n"
 
-        return "未提供具体解决方案"
+            # 从表格中提取
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        full_text += cell.text + "\n"
 
-    def get_subgraph_for_entities(self, entities):
-        """返回与实体相关的简单子图结构"""
-        nodes = []
-        links = []
+            # 转为小写以进行不区分大小写的匹配
+            full_text_lower = full_text.lower()
 
-        for entity in entities:
-            entity_type = self._guess_entity_type(entity)
-            nodes.append({
-                "id": entity,
-                "name": entity,
-                "type": entity_type
-            })
+            # 记录匹配到的关键词
+            matched_keywords = []
+            for keyword in keywords:
+                keyword_lower = keyword.lower()
+                if keyword_lower in full_text_lower:
+                    matched_keywords.append(keyword)
 
-            # 创建实体间的关联
-            if len(nodes) > 1:
-                links.append({
-                    "source": nodes[0]["id"],
-                    "target": entity,
-                    "relation": "相关联"
-                })
+            # 计算匹配分数 (匹配关键词数/总关键词数)
+            match_score = len(matched_keywords) / len(keywords) if keywords else 0
 
-        return {
-            "nodes": nodes,
-            "links": links
-        }
+            # 提取文档标题 (尝试从第一个段落或文件名获取)
+            title = ""
+            if doc.paragraphs and doc.paragraphs[0].text.strip():
+                title = doc.paragraphs[0].text.strip()
+            else:
+                title = os.path.basename(file_path)
 
-    def _guess_entity_type(self, entity):
-        """猜测实体类型"""
-        equipment_keywords = ["变压器", "电抗器", "开关", "绝缘子", "电缆", "线路", "避雷器"]
-        problem_keywords = ["渗漏油", "污闪", "缺陷", "裂纹", "老化", "破损", "异常"]
+            # 提取文档描述 (尝试获取前200个字符)
+            description = full_text[:200] + "..." if len(full_text) > 200 else full_text
 
-        if any(kw in entity for kw in equipment_keywords):
-            return "设备"
-        elif any(kw in entity for kw in problem_keywords):
-            return "问题"
-        else:
-            return "其他"
+            # 只有当匹配数量超过阈值时才认为是有效匹配
+            if len(matched_keywords) >= threshold:
+                return {
+                    "match_score": match_score,
+                    "matched_keywords": matched_keywords,
+                    "match_count": len(matched_keywords),
+                    "title": title,
+                    "description": description,
+                    "source": os.path.basename(file_path),
+                }
+            return None
 
+        except Exception as e:
+            print(f"处理文件 {file_path} 时出错: {str(e)}")
+            return None
+
+    def _match_stage(self, doc_stage, query_stage):
+        """检查文档中的阶段是否与查询阶段匹配"""
+        # 如果任一阶段为空，视为匹配
+        if not doc_stage or not query_stage:
+            return True
+
+        # 标准化文档阶段
+        normalized_doc_stage = self._normalize_stage(doc_stage)
+        normalized_query_stage = self._normalize_stage(query_stage)
+
+        # 比较标准化后的阶段
+        return normalized_doc_stage == normalized_query_stage
 
 # 创建单例
 file_service = FileService()

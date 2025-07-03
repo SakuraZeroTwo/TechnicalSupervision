@@ -22,15 +22,15 @@ def encode_image_to_base64(image_path: str) -> str:
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-def get_vlm_analysis(prompt_text: str, image_path: str, stage: str = None) -> dict:
+def get_vlm_analysis(prompt_text: str, image_path: str = None, stage: str = None) -> dict:
     """
     调用 qwen-vl-max 模型获取对图片和文本的分析
     使用 OpenAI SDK 兼容模式
 
     Args:
         prompt_text: 用户的输入文本描述
-        image_path: 用户上传的图片文件路径
-        stage: 问题阶段（如规划可研、设计等）
+        image_path: 用户上传的图片文件路径（可选）
+        stage: 问题阶段（如规划可研等）
 
     Returns:
         模型的响应结果 (JSON) 或包含错误的字典。
@@ -38,47 +38,56 @@ def get_vlm_analysis(prompt_text: str, image_path: str, stage: str = None) -> di
     if not client:
         return {"error": "OpenAI 客户端未初始化。"}
 
-    # 这个提示词是核心，确保它能返回我们需要的所有字段
+    # 提示词
     enhanced_prompt = f"""
-    你是一个资深的电力设备巡检专家。请根据以下用户描述和图片，完成以下分析任务：
+    你是一个资深的电力设备巡检专家。请根据以下用户描述{'' if image_path else '(无图片提供)'}，完成以下分析任务：
 
-    1.  **扩写描述 (enhanced_description)**: 根据图片和用户描述，用专业的语言对问题进行详细、全面的扩写。
-    2.  **状态描述 (status_description)**: 详细描述图片中设备的状态，并判断其严重程度（例如：一般、严重、紧急）。
+    1.  **扩写描述 (enhanced_description)**: 根据{'' if image_path else '用户'}描述，用专业的语言对问题进行详细、全面的扩写。
+    2.  **状态描述 (status_description)**: 详细描述{'' if image_path else '根据描述推测'}设备的状态，并判断其严重程度（例如：一般、严重、紧急）。
     3.  **原因分析 (cause_analysis)**: 分析可能导致该问题的多种潜在原因。
-    4.  **阶段识别 (stage)**: {f'问题属于用户指定的"{stage}"阶段' if stage else '从“规划可研阶段、工程设计阶段、设备采购阶段、设备制造阶段、设备验收阶段、设备安装阶段、设备调试阶段、竣工验收阶段、运维检修阶段、退役报废阶段”中，识别该问题最可能出现的阶段。'}
+    4.  **阶段识别 (stage)**: {f'问题属于用户指定的"{stage}"阶段' if stage else '从"规划可研阶段、工程设计阶段、设备采购阶段、设备制造阶段、设备验收阶段、设备安装阶段、设备调试阶段、竣工验收阶段、运维检修阶段、退役报废阶段"中，识别该问题最可能出现的阶段。'}
     5.  **监督意见 (supervision_suggestion)**: 提出具体、可执行的处理建议或监督意见。
-    6.  **实体提取 (entities)**: 识别描述和图片中的核心实体（如设备名称、问题类型、关键部件等），以列表形式返回，例如 ["绝缘子", "污闪", "裂纹"]。
+    6.  **实体提取 (entities)**: 识别描述{'' if image_path else ''}中的核心实体（如设备名称、问题类型、关键部件等），以列表形式返回，例如 ["绝缘子", "污闪", "裂纹"]。
 
     请严格将你的回答以一个完整的 JSON 对象的格式返回，确保不包含任何额外的解释性文字。JSON对象必须包含以下键：'enhanced_description', 'status_description', 'cause_analysis', 'stage', 'supervision_suggestion', 'entities'。
 
     用户描述: "{prompt_text}"
     """
-    # 1. 将图片编码为 Base64
-    try:
-        base64_image = encode_image_to_base64(image_path)
-    except FileNotFoundError:
-        return {"error": f"图片文件未找到: {image_path}"}
-    except Exception as e:
-        return {"error": f"图片编码失败: {e}"}
+    messages = []
 
-    # 2. 构建消息体 (messages)
-    messages = [
-        {
-            "role": "user",
-            "content": [
+    # 有图片时添加图片消息
+    if image_path:
+        try:
+            base64_image = encode_image_to_base64(image_path)
+            messages = [
                 {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{base64_image}"
-                    }
-                },
-                {
-                    "type": "text",
-                    "text": enhanced_prompt
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": enhanced_prompt
+                        }
+                    ]
                 }
             ]
-        }
-    ]
+        except FileNotFoundError:
+            return {"error": f"图片文件未找到: {image_path}"}
+        except Exception as e:
+            return {"error": f"图片编码失败: {e}"}
+    else:
+        # 无图片时只发送文本
+        messages = [
+            {
+                "role": "user",
+                "content": enhanced_prompt
+            }
+        ]
 
     # 3. 调用 API
     try:
