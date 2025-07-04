@@ -5,7 +5,6 @@ import jieba
 import re
 from docx import Document
 from services.vector_service import vector_service
-from .vlm_service import client as vlm_client #
 from pathlib import Path
 import json
 import time
@@ -209,7 +208,7 @@ class FileService:
         # 如果使用向量搜索且没有指定特定文件
         if use_vector_search and not specific_file:
             # 增加检索数量，以获得更多候选结果
-            vector_results = vector_service.search(query_text, top_k=max_results * 5)
+            vector_results = vector_service.search(query_text, keywords, top_k=max_results * 5)
 
             # 确保有返回结果且结构正确
             if not vector_results or not isinstance(vector_results, list):
@@ -217,7 +216,6 @@ class FileService:
                 return self.find_regulations_by_stage_and_keywords_traditional(stage, keywords, max_results,
                                                                       strict_stage_match, specific_file)
 
-            # 放宽过滤条件，先不做阶段过滤
             filtered_results = []
             stage_filtered_count = 0
 
@@ -231,7 +229,7 @@ class FileService:
                     source = result.get('source', {})
                     sheet_name = source.get('sheet', '')
 
-                    # 检查阶段匹配（宽松匹配）
+                    # 检查阶段匹配
                     normalized_stage = self._normalize_stage(stage)
                     if (normalized_stage.lower() in sheet_name.lower() or
                             normalized_stage.lower() in result_stage.lower()):

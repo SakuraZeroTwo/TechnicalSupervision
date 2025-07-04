@@ -2,6 +2,7 @@ import os
 import base64
 from openai import OpenAI
 from .file_service import file_service
+import re
 
 KNOWN_ENTITIES_STR = file_service.known_entities_str
 # -------------------------------------------------------------------------
@@ -113,3 +114,59 @@ def get_vlm_analysis(prompt_text: str, image_path: str = None, stage: str = None
     except Exception as e:
         print(f"调用 VLM API 时发生错误: {e}")
         return {"error": str(e)}
+
+def rerank_regulations_with_vlm(description: str, regulations: list) -> list:
+    """
+    使用VLM对候选规范列表进行重排序。
+
+    Args:
+        description: 用户输入的问题描述。
+        regulations: 从向量搜索中获得的候选规范列表。
+
+    Returns:
+        一个根据VLM评分排序后的规范列表。
+    """
+    if not regulations:
+        return []
+
+    # 1. 构建一个详细的提示，要求模型对每个规范进行评分
+    prompt_parts = [f"你是一个电力技术监督专家。请根据以下问题描述，评估每一条技术监督规范的相关性，并按从0到100的相关性分数进行打分。请严格按照'【规范ID】: [分数]'的格式输出，每个规范一行。\n\n问题描述：\n---\n{description}\n---\n\n候选规范列表：\n"]
+    for i, reg in enumerate(regulations):
+        reg_text = f"标题: {reg.get('title', '')}\n监督依据: {reg.get('basis', '')}\n监督要点: {reg.get('points', '')}\n监督要求: {reg.get('requirements', '')}"
+        prompt_parts.append(f"【规范{i}】:\n{reg_text}\n")
+
+    full_prompt = "".join(prompt_parts)
+
+    # 2. 调用VLM服务
+    try:
+        response = client.chat.completions.create(
+            model="qwen-vl-max",
+            messages=[{'role': 'user', 'content': full_prompt}],
+            temperature=0.0, # 使用低温以获得更稳定的评分
+        )
+        content = response.choices[0].message.content
+    except Exception as e:
+        print(f"调用VLM进行重排时出错: {e}")
+        # 如果VLM失败，则返回原始列表，避免整个流程失败
+        return regulations
+
+    # 3. 解析VLM的评分结果
+    scores = {}
+    # 正则表达式匹配 "【规范X】: Y" 或 "【规范X】：Y"
+    score_matches = re.findall(r'【规范(\d+)】\s*[:：]\s*(\d+)', content)
+    for reg_id, score in score_matches:
+        try:
+            scores[int(reg_id)] = int(score)
+        except (ValueError, IndexError):
+            continue
+
+    # 4. 将分数附加到原始规范对象上，并处理未被评分的规范
+    for i, reg in enumerate(regulations):
+        # VLM评分的权重更高，向量搜索的原始分数作为次要排序依据
+        reg['vlm_score'] = scores.get(i, 0) # 如果VLM没有评分，则默认为0
+        reg['final_score'] = reg['vlm_score'] + reg.get('score', 0) * 0.1 # 组合分数
+
+    # 5. 根据最终分数进行降序排序
+    regulations.sort(key=lambda x: x.get('final_score', 0), reverse=True)
+
+    return regulations

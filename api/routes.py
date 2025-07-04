@@ -15,7 +15,7 @@ from services.vlm_service import get_vlm_analysis
 from services.neo4j_service import neo4j_service # neo4j服务已不再使用
 from services.word_service import create_word_report
 from services.file_service import file_service
-
+from services.vlm_service import rerank_regulations_with_vlm
 
 # 创建一个蓝图
 api_bp = Blueprint('api', __name__)
@@ -85,32 +85,54 @@ def analyze_issue():
             {"error": "解析VLM返回结果失败", "details": str(e), "raw_vlm_output": vlm_result.get('content')}), 500
 
     # 5. 直接从原始描述中提取关键词作为实体
-    entities_list = [word for word in jieba.lcut(description) if len(word) >= 2]
-
-    # 从VLM结果中获取阶段和分析，但描述使用原始描述
+    entities_list = analysis_content.get('entities', [])
+    if isinstance(entities_list, str):
+        entities_list = [e.strip() for e in entities_list.split(',') if e.strip()]
     recognized_stage = analysis_content.get('stage', stage if stage else '运维检修阶段')
 
     # 添加原始描述中的关键词作为实体
-    if description:
-        description_keywords = [w for w in jieba.lcut(description) if len(w) >= 2]
-        for kw in description_keywords:
-            if kw not in entities_list:
-                entities_list.append(kw)
+    description_keywords = [w for w in jieba.lcut(description) if len(w) >= 2]
+    for kw in description_keywords:
+        if kw not in entities_list:
+            entities_list.append(kw)
 
     # 6. 使用文件服务检索规范条例
-    retrieved_regulations = []
-    if entities_list:
-        try:
-            clean_stage = recognized_stage.replace("阶段", "") if recognized_stage else "运维检修"
-            retrieved_regulations = file_service.find_regulations_by_stage_and_keywords(clean_stage, entities_list, strict_stage_match=True, specific_file=specific_file,use_vector_search=True)
-        except Exception as e:
-            current_app.logger.error(f"文件检索错误: {str(e)}")
+    clean_stage = recognized_stage.replace("阶段", "") if recognized_stage else "运维检修"
+    # 【第一阶段：向量召回】从 file_service 获取一个较大的候选集
+    candidate_regulations = file_service.find_regulations_by_stage_and_keywords(
+        stage=clean_stage,
+        keywords=description,
+        max_results=100,  # 获取100个候选
+        strict_stage_match=True,
+        specific_file=specific_file,
+        use_vector_search=True
+    )
+    # 确保返回的条例其文件名至少包含一个核心实体
+    if entities_list and candidate_regulations:
+        filtered_by_entity = []
+        for reg in candidate_regulations:
+            # 检查条例的标题（文件名）是否包含任何一个实体
+            if any(entity in reg.get('title', '') for entity in entities_list):
+                filtered_by_entity.append(reg)
+
+        # 如果过滤后有结果，则使用过滤后的结果；否则，为避免无结果返回，使用原始候选集
+        if filtered_by_entity:
+            candidate_regulations = filtered_by_entity
+
+    # 【第二阶段：VLM重排】调用VLM服务对候选集进行智能排序
+    try:
+        ranked_regulations = rerank_regulations_with_vlm(description, candidate_regulations)
+    except Exception as e:
+        current_app.logger.error(f"VLM重排失败: {e}")
+        # 如果重排失败，则使用原始向量搜索结果
+        ranked_regulations = candidate_regulations
+
 
     # 7. 直接选用第一条检索到的条例
     best_regulation = {}
-    if retrieved_regulations:
+    if ranked_regulations:
         # file_service 返回的结果已经按相关性排序，直接取第一个即可
-        best_regulation = retrieved_regulations[0]
+        best_regulation = ranked_regulations[0]
 
     # 8. 准备用于前端展示的结构化数据
     display_data = {
@@ -148,7 +170,7 @@ def analyze_issue():
     final_response = {
         "display_data": display_data,
         "historical_cases":  historical_cases,
-        "regulations": retrieved_regulations, # 返回所有检索到的条例供前端选择
+        "regulations": ranked_regulations[:30], # 返回所有检索到的条例供前端选择
         "report_url": None
     }
 
