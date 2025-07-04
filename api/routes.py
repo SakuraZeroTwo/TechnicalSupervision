@@ -154,20 +154,14 @@ def analyze_issue():
     return jsonify(final_response)
 
 
-@api_bp.route('/graph/from-text', methods=['POST'])
+@api_bp.route('/graph', methods=['POST'])
 def graph_analysis_from_text():
-    """
-    接收文本描述，提取实体，并返回相关的图数据库子图。
-    （版本：仅使用大模型进行实体识别）
-    """
-    # 1. 获取请求中的描述
-    data = request.get_json()
-    if not data or 'description' not in data:
-        return jsonify({"error": "请求体中未找到 'description' 字段"}), 400
-
-    description = data['description']
+    # 1. 从表单中获取描述
+    #  --- START: 这是新的实现方式 ---
+    description = request.form.get('description')
     if not description:
-        return jsonify({"error": "'description' 字段不能为空"}), 400
+        return jsonify({"error": "表单中未找到 'description' 字段或该字段为空"}), 400
+    # --- END: 这是新的实现方式 ---
 
     # 2. 调用 VLM 服务进行分析和实体提取
     vlm_result = get_vlm_analysis(description, image_path=None)
@@ -189,8 +183,6 @@ def graph_analysis_from_text():
         return jsonify(
             {"error": "解析VLM实体识别结果失败", "details": str(e), "raw_vlm_output": vlm_result.get('content')}), 500
 
-    # 4. 【核心修正】直接使用大模型返回的实体列表
-    # ---------------------------------------------------------------------
     entities_list = []
     entities_data = analysis_content.get('entities', [])
     if isinstance(entities_data, list):
@@ -198,7 +190,6 @@ def graph_analysis_from_text():
     elif isinstance(entities_data, str):
         # 处理模型可能返回逗号分隔的字符串的情况
         entities_list = [e.strip() for e in entities_data.split(',') if e.strip()]
-    # ---------------------------------------------------------------------
 
     if not entities_list:
         return jsonify({"message": "未能从描述中识别出有效实体", "subgraph": {"nodes": [], "links": []}}), 200
@@ -213,6 +204,7 @@ def graph_analysis_from_text():
     except Exception as e:
         current_app.logger.error(f"图数据库检索失败: {str(e)}")
         return jsonify({"error": "图数据库检索时发生内部错误", "details": str(e)}), 500
+
 
 # 生成自定义markdown内容
 def generate_custom_markdown(vlm_analysis, regulations=None, historical_cases=None, report_url=None):

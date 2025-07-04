@@ -1,4 +1,3 @@
-# services/file_service.py
 import os
 import pandas as pd
 import jieba
@@ -6,6 +5,8 @@ import re
 from docx import Document
 from pathlib import Path
 import json
+import csv  # 【新增】导入csv模块
+from typing import Set  # 【新增】导入Set类型提示
 
 
 class FileService:
@@ -17,6 +18,7 @@ class FileService:
         self.excel_path = os.path.join(self.base_path, '标准excel')
         self.problem_path = os.path.join(self.base_path, '技术监督问题与条例')
         self.transformer_cases_path = os.path.join(self.base_path, '甘肃电力变压器故障案例')
+        self.entity_library_path = os.path.join(self.base_path, '实体库')  # 【新增】实体库路径
 
         # 阶段映射字典
         self._stage_dict = {
@@ -32,10 +34,46 @@ class FileService:
             "退役报废": ["退役报废阶段", "退役", "报废"]
         }
 
-        # 初始化索引
+        # 【修改】在初始化时，加载所有文件和实体库索引
+        print("FileService正在初始化...")
+        # 1. 加载实体库
+        self.all_known_entities = self._load_known_entities()
+        self.known_entities_str = ", ".join(self.all_known_entities)
+        print(f"实体库加载完成，共找到 {len(self.all_known_entities)} 个已知实体。")
+
+        # 2. 构建文件索引
         self._build_indices()
+        print("FileService初始化完成。")
+
+    # 【新增】一个私有方法，专门用于加载实体库
+    def _load_known_entities(self) -> Set[str]:
+        """从 files/实体库/ 文件夹加载所有实体。"""
+        # 使用已在__init__中定义的路径
+        equipment_file = os.path.join(self.entity_library_path, '故障设备.csv')
+        phenomena_file = os.path.join(self.entity_library_path, '故障现象.csv')
+
+        entities: Set[str] = set()
+
+        # 封装一个内部函数来读取csv，避免代码重复
+        def read_csv_to_set(file_path):
+            s = set()
+            try:
+                with open(file_path, mode='r', encoding='utf-8-sig') as infile:
+                    reader = csv.reader(infile)
+                    for row in reader:
+                        if row and row[0].strip():
+                            s.add(row[0].strip())
+            except FileNotFoundError:
+                print(f"    警告：实体文件未找到: {file_path}")
+            return s
+
+        equipment_entities = read_csv_to_set(equipment_file)
+        phenomena_entities = read_csv_to_set(phenomena_file)
+
+        return equipment_entities.union(phenomena_entities)
 
     def _find_columns_in_excel(self, file_path, sheet_name):
+        # ... 此方法及之后的所有方法都保持不变 ...
         """识别Excel中的关键列，处理表头在第3行的情况"""
         # 读取原始数据，不指定表头
         df_raw = pd.read_excel(file_path, sheet_name=sheet_name, header=None)
@@ -59,7 +97,7 @@ class FileService:
                     for target_col, aliases in column_mappings.items():
                         if cell_str in aliases or any(alias in cell_str for alias in aliases):
                             col_indices[target_col] = col_idx
-                            print(f"    在第{header_row_idx + 1}行找到列名'{target_col}'，位置: 第{col_idx + 1}列")
+                            # print(f"    在第{header_row_idx + 1}行找到列名'{target_col}'，位置: 第{col_idx + 1}列")
 
         # 如果没找到，尝试其他行（第1-5行）
         if not col_indices:
@@ -72,7 +110,7 @@ class FileService:
                         for target_col, aliases in column_mappings.items():
                             if cell_str in aliases or any(alias in cell_str for alias in aliases):
                                 col_indices[target_col] = col_idx
-                                print(f"    在第{row_idx + 1}行找到列名'{target_col}'，位置: 第{col_idx + 1}列")
+                                # print(f"    在第{row_idx + 1}行找到列名'{target_col}'，位置: 第{col_idx + 1}列")
 
         # 数据从列名行的下一行开始
         data_start_row = header_row_idx + 1
@@ -84,6 +122,7 @@ class FileService:
                 column_data[target_col] = df_raw.iloc[data_start_row:, col_idx]
 
         return column_data, col_indices
+
     def _build_indices(self):
         """构建文件索引，提高检索效率"""
         print("正在构建文件索引...")
@@ -92,7 +131,7 @@ class FileService:
         self.excel_files = self._scan_files(self.excel_path, ['.xls', '.xlsx'])
         self.problem_files = self._scan_files(self.problem_path, ['.xls', '.xlsx'])
         self.transformer_files = self._scan_files(self.transformer_cases_path, ['.docx', '.doc', '.pdf'])
-        print(f"索引构建完成，共找到 {len(self.regulation_files)} 条技术条例文件，{len(self.case_files)} 条案例文件")
+        print(f"文件索引构建完成，共找到 {len(self.regulation_files)} 条技术条例，{len(self.case_files)} 条案例。")
 
     def _scan_files(self, directory, extensions):
         """扫描指定目录下的所有符合扩展名的文件"""
@@ -103,7 +142,6 @@ class FileService:
                     if any(filename.lower().endswith(ext) for ext in extensions) and not filename.startswith('~$'):
                         files.append(os.path.join(root, filename))
         return files
-
 
     def find_regulations_by_stage_and_keywords(self, stage, keywords, max_results=5):
         """根据阶段和关键词从技术监督条例中查找相关内容"""
@@ -125,10 +163,10 @@ class FileService:
                     if len(part) >= 2 and part not in expanded_keywords:
                         expanded_keywords.append(part)
 
-        print(f"扩展后的关键词: {expanded_keywords}")
+        # print(f"扩展后的关键词: {expanded_keywords}")
 
         normalized_stage = self._normalize_stage(stage)
-        print(f"标准化后的阶段: {normalized_stage}")
+        # print(f"标准化后的阶段: {normalized_stage}")
 
         filtered_files = []
         for file_path in self.regulation_files:
@@ -139,17 +177,17 @@ class FileService:
                 filtered_files.append((file_path, 1))
 
         if not filtered_files:
-            print("文件名中未找到匹配关键词的条例，将搜索所有条例文件")
+            # print("文件名中未找到匹配关键词的条例，将搜索所有条例文件")
             filtered_files = [(file_path, 0) for file_path in self.regulation_files]
-        else:
-            print(f"找到 {len(filtered_files)} 个文件名包含关键词的条例文件")
+        # else:
+        # print(f"找到 {len(filtered_files)} 个文件名包含关键词的条例文件")
 
         filtered_files.sort(key=lambda x: x[1], reverse=True)
 
         for file_path, name_match_score in filtered_files:
             try:
                 file_name = os.path.basename(file_path)
-                print(f"处理文件: {file_name}" + (" (文件名匹配)" if name_match_score > 0 else ""))
+                # print(f"处理文件: {file_name}" + (" (文件名匹配)" if name_match_score > 0 else ""))
                 processed_files += 1
                 xls = pd.ExcelFile(file_path)
 
@@ -163,7 +201,7 @@ class FileService:
 
                 for sheet_name in target_sheets:
                     try:
-                        print(f"  处理工作表: {sheet_name}")
+                        # print(f"  处理工作表: {sheet_name}")
 
                         # 【修正】初始化data_start_row，避免引用前未赋值的错误
                         data_start_row = 3  # 默认数据从第4行开始（索引为3）
@@ -171,10 +209,10 @@ class FileService:
                         column_data, col_indices = self._find_columns_in_excel(file_path, sheet_name)
 
                         if not column_data:
-                            print(f"  工作表 {sheet_name} 未找到相关列")
+                            # print(f"  工作表 {sheet_name} 未找到相关列")
                             continue
 
-                        print(f"  在工作表 {sheet_name} 找到列: {list(column_data.keys())}")
+                        # print(f"  在工作表 {sheet_name} 找到列: {list(column_data.keys())}")
 
                         for idx in range(len(next(iter(column_data.values())))):
                             row_data = {}
@@ -218,7 +256,7 @@ class FileService:
                 print(f"处理文件 {file_path} 时出错: {str(e)}")
                 continue
 
-        print(f"检索统计: 处理了{processed_files}个文件, 匹配到{matched_files}个结果")
+        # print(f"检索统计: 处理了{processed_files}个文件, 匹配到{matched_files}个结果")
 
         unique_results = {}
         for result in results:
@@ -296,7 +334,7 @@ class FileService:
             except Exception as e:
                 print(f"处理文件 {file_path} 时出错: {str(e)}")
 
-        print(f"检索统计: 处理了{processed_files}个文件, 匹配到{matched_files}个结果")
+        # print(f"检索统计: 处理了{processed_files}个文件, 匹配到{matched_files}个结果")
 
         # 按匹配分数排序
         results.sort(key=lambda x: x.get("match_score", 0), reverse=True)
@@ -387,6 +425,7 @@ class FileService:
 
         # 比较标准化后的阶段
         return normalized_doc_stage == normalized_query_stage
+
 
 # 创建单例
 file_service = FileService()
