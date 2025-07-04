@@ -1,7 +1,9 @@
 import os
 import base64
 from openai import OpenAI
+from .file_service import file_service
 
+KNOWN_ENTITIES_STR = file_service.known_entities_str
 # -------------------------------------------------------------------------
 # 使用 OpenAI SDK 兼容模式
 # -------------------------------------------------------------------------
@@ -47,7 +49,16 @@ def get_vlm_analysis(prompt_text: str, image_path: str = None, stage: str = None
     3.  **阶段识别 (stage)**: {f'问题属于用户指定的"{stage}"阶段' if stage else '从"规划可研阶段、工程设计阶段、设备采购阶段、设备制造阶段、设备验收阶段、设备安装阶段、设备调试阶段、竣工验收阶段、运维检修阶段、退役报废阶段"中，识别该问题最可能出现的阶段。'}
     4.  **监督意见 (supervision_suggestion)**: 提出具体、可执行的处理建议或监督意见。
 
-    请严格将你的回答以一个完整的 JSON 对象的格式返回，确保不包含任何额外的解释性文字。JSON对象必须包含以下键：'status_description', 'cause_analysis', 'stage', 'supervision_suggestion'。
+    {'''
+    5.  **实体提取 (entities)**: 从用户描述和你的分析中，识别出核心实体。请遵循以下规则：
+        - **规则1**: 请优先从以下 '已知实体列表' 中进行识别，若出现已知实体列表内的设备或现象，直接识别，尽可能匹配上已知实体列表，如“主变压器”识别成“变压器”，出现列表内描述的现象也识别成现象实体。
+        - **规则2**: 请识别通用设备名称或故障现象（如 '变压器', '局部放电'），而不是具体的、详细的设备型号（例如 'S11-M-100/10'）。
+        - **已知实体列表**: [{KNOWN_ENTITIES_STR}]
+        - 你的输出必须是一个标准的Python列表格式，例如 ["绝缘子", "污闪", "裂纹"]。
+    '''  
+    }
+
+    请严格将你的回答以一个完整的 JSON 对象的格式返回，确保不包含任何额外的解释性文字。JSON对象必须包含以下键：'status_description', 'cause_analysis', 'stage', 'supervision_suggestion', 'entities'。
 
     用户描述: "{prompt_text}"
     """

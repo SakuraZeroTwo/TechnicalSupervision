@@ -5,9 +5,12 @@ import jieba
 import re
 from docx import Document
 from services.vector_service import vector_service
+from .vlm_service import client as vlm_client #
 from pathlib import Path
 import json
 import time
+import csv
+from typing import Set
 
 class FileService:
     def __init__(self):
@@ -18,6 +21,7 @@ class FileService:
         self.excel_path = os.path.join(self.base_path, '标准excel')
         self.problem_path = os.path.join(self.base_path, '技术监督问题与条例')
         self.transformer_cases_path = os.path.join(self.base_path, '甘肃电力变压器故障案例')
+        self.entity_library_path = os.path.join(self.base_path, '实体库')  # 【新增】实体库路径
 
         # 阶段映射字典
         self._stage_dict = {
@@ -33,8 +37,41 @@ class FileService:
             "退役报废": ["退役报废阶段", "退役", "报废"]
         }
 
+        print("FileService正在初始化...")
+        # 1. 加载实体库
+        self.all_known_entities = self._load_known_entities()
+        self.known_entities_str = ", ".join(self.all_known_entities)
+        print(f"实体库加载完成，共找到 {len(self.all_known_entities)} 个已知实体。")
+
         # 初始化索引
         self._build_indices()
+
+    # 【新增】一个私有方法，专门用于加载实体库
+    def _load_known_entities(self) -> Set[str]:
+        """从 files/实体库/ 文件夹加载所有实体。"""
+        # 使用已在__init__中定义的路径
+        equipment_file = os.path.join(self.entity_library_path, '故障设备.csv')
+        phenomena_file = os.path.join(self.entity_library_path, '故障现象.csv')
+
+        entities: Set[str] = set()
+
+        # 封装一个内部函数来读取csv，避免代码重复
+        def read_csv_to_set(file_path):
+            s = set()
+            try:
+                with open(file_path, mode='r', encoding='utf-8-sig') as infile:
+                    reader = csv.reader(infile)
+                    for row in reader:
+                        if row and row[0].strip():
+                            s.add(row[0].strip())
+            except FileNotFoundError:
+                print(f"    警告：实体文件未找到: {file_path}")
+            return s
+
+        equipment_entities = read_csv_to_set(equipment_file)
+        phenomena_entities = read_csv_to_set(phenomena_file)
+
+        return equipment_entities.union(phenomena_entities)
 
     def _find_columns_in_excel(self, file_path, sheet_name):
         """识别Excel中的关键列，处理表头在第3行的情况"""
@@ -43,6 +80,7 @@ class FileService:
 
         # 定义可能的列名及其别名
         column_mappings = {
+            'major_item_name': ['大项名称', '大项', '项目名称'],  # 【新增】
             '监督依据': ['监督依据', '依据', '技术依据', '标准依据', '规范依据'],
             '监督要点': ['监督要点', '要点', '监督重点', '检查要点', '关键点'],
             '监督要求': ['监督要求', '要求', '技术要求', '规范要求', '检查要求']
@@ -125,6 +163,7 @@ class FileService:
                             if row_data:
                                 result = {
                                     'title': f"{os.path.basename(file_path)} - {sheet_name}",
+                                    'major_item_name': row_data.get('major_item_name', ''),
                                     'basis': row_data.get('监督依据', ''),
                                     'points': row_data.get('监督要点', ''),
                                     'requirements': row_data.get('监督要求', ''),
@@ -152,7 +191,7 @@ class FileService:
                         files.append(os.path.join(root, filename))
         return files
 
-    def find_regulations_by_stage_and_keywords(self, stage, keywords, max_results=5, strict_stage_match=True,
+    def find_regulations_by_stage_and_keywords(self, stage, keywords, max_results=30, strict_stage_match=True,
                                                specific_file=None, use_vector_search=True):
         """根据阶段和关键词从技术监督条例中查找相关内容，增加向量搜索功能"""
         start_time = time.time()
@@ -330,6 +369,7 @@ class FileService:
                                 title = f"{os.path.basename(file_path)} - {sheet_name}"
                                 result = {
                                     'title': title,
+                                    'major_item_name': row_data.get('major_item_name', ''),
                                     'basis': row_data.get('监督依据', ''),
                                     'points': row_data.get('监督要点', ''),
                                     'requirements': row_data.get('监督要求', ''),
@@ -520,6 +560,7 @@ class FileService:
 
         # 比较标准化后的阶段
         return normalized_doc_stage == normalized_query_stage
+
 
 # 创建单例
 file_service = FileService()

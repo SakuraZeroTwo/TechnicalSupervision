@@ -4,6 +4,7 @@ from werkzeug.utils import secure_filename
 import os
 import json
 import warnings
+import re
 
 # 忽略openpyxl的样式警告
 warnings.filterwarnings("ignore", category=UserWarning,
@@ -11,7 +12,7 @@ warnings.filterwarnings("ignore", category=UserWarning,
 
 # 导入服务
 from services.vlm_service import get_vlm_analysis
-# from services.neo4j_service import neo4j_service # neo4j服务已不再使用
+from services.neo4j_service import neo4j_service # neo4j服务已不再使用
 from services.word_service import create_word_report
 from services.file_service import file_service
 
@@ -154,13 +155,12 @@ def analyze_issue():
     # 10. 如果需要生成Word报告
     if generate_word:
         word_report_data = {
-            'case_name': f"{recognized_stage} - {entities_list[0] if entities_list else '通用'}问题案例",
+            'case_name': '待补充',
             'supervision_stage': recognized_stage,
             'regulation': best_regulation,
             'description': description,
             'analysis': analysis_content.get('cause_analysis', '待补充'),
             'suggestions': analysis_content.get('supervision_suggestion', '待补充'),
-            # 其他字段可以根据需要填充
             'unit_name': '待补充',
             'project_info': {},
             'device_info': {},
@@ -170,6 +170,33 @@ def analyze_issue():
             'other_issues': '无',
             'attachments': '无'
         }
+
+        if best_regulation:
+            # 提取大项名称前的数字（例如从"9.1电气设备性能"提取"9.1"）
+            major_item_name = best_regulation.get('major_item_name', '')
+            points_text = best_regulation.get('points', '')
+
+            # 更精确的正则表达式，匹配大项名称前面的数字部分
+            major_num_match = re.search(r'^(\d+(\.\d+)*)', major_item_name)
+
+            # 从监督要点中提取编号（如从"1. 内容"提取"1"）
+            points_num_match = re.search(r'^[（\(]?(\d+)[）\)\.、]*', points_text)
+
+            # 提取并清理编号
+            major_num = major_num_match.group(1) if major_num_match else ''
+            points_num = points_num_match.group(1) if points_num_match else ''
+
+            # 拼接条款序号
+            if major_num and points_num:
+                clause_number = f"{major_num}.{points_num}"
+                word_report_data['regulation']['clause'] = clause_number
+            elif major_num:
+                word_report_data['regulation']['clause'] = major_num
+            elif points_num:
+                word_report_data['regulation']['clause'] = points_num
+            else:
+                word_report_data['regulation']['clause'] = "未知"
+
         report_path = create_word_report(word_report_data, image_path)
         report_url = request.host_url + 'static/reports/' + os.path.basename(report_path)
         final_response["report_url"] = report_url
@@ -228,3 +255,53 @@ def download_case_file(filename):
     except Exception as e:
         current_app.logger.error(f"下载案例文件时出错: {e}")
         return jsonify({"error": "服务器内部错误"}), 500
+
+
+@api_bp.route('/graph', methods=['POST'])
+def graph_analysis_from_text():
+    # 1. 从表单中获取描述
+    description = request.form.get('description')
+    if not description:
+        return jsonify({"error": "表单中未找到 'description' 字段或该字段为空"}), 400
+
+    # 2. 调用 VLM 服务进行分析和实体提取
+    vlm_result = get_vlm_analysis(description, image_path=None)
+    if "error" in vlm_result:
+        return jsonify({"error": "调用VLM模型进行实体识别失败", "details": vlm_result.get('error')}), 500
+
+    # 3. 解析 VLM 结果
+    try:
+        raw_content = vlm_result['content']
+        if '```' in raw_content:
+            start_index = raw_content.find('{')
+            end_index = raw_content.rfind('}')
+            json_string = raw_content[
+                          start_index:end_index + 1] if start_index != -1 and end_index != -1 else raw_content
+        else:
+            json_string = raw_content
+        analysis_content = json.loads(json_string)
+    except (json.JSONDecodeError, KeyError) as e:
+        return jsonify(
+            {"error": "解析VLM实体识别结果失败", "details": str(e), "raw_vlm_output": vlm_result.get('content')}), 500
+
+    entities_list = []
+    entities_data = analysis_content.get('entities', [])
+    if isinstance(entities_data, list):
+        entities_list = entities_data
+    elif isinstance(entities_data, str):
+        # 处理模型可能返回逗号分隔的字符串的情况
+        entities_list = [e.strip() for e in entities_data.split(',') if e.strip()]
+
+    if not entities_list:
+        return jsonify({"message": "未能从描述中识别出有效实体", "subgraph": {"nodes": [], "links": []}}), 200
+
+    # 5. 调用 Neo4j 服务进行图数据库检索
+    try:
+        subgraph_data = neo4j_service.get_subgraph_for_entities(entities_list)
+        return jsonify({
+            "entities_found": entities_list,
+            "subgraph": subgraph_data
+        })
+    except Exception as e:
+        current_app.logger.error(f"图数据库检索失败: {str(e)}")
+        return jsonify({"error": "图数据库检索时发生内部错误", "details": str(e)}), 500

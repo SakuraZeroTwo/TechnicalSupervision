@@ -5,6 +5,7 @@ from docx.enum.table import WD_ALIGN_VERTICAL
 from docx.oxml.shared import qn
 import datetime
 import os
+import re
 
 
 def set_cell_properties(cell, text, bold=False, align='LEFT', font_name='仿宋_GB2312', font_size=11):
@@ -200,7 +201,7 @@ def create_word_report(data: dict, image_input) -> str:
     add_merged_row('案例附件', 'attachments')
 
     # 保存文档
-    output_filename = f"report_final_strict_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    output_filename = f"report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     output_path = os.path.join('static', 'reports', output_filename)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     document.save(output_path)

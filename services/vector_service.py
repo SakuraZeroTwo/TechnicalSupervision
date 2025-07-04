@@ -13,11 +13,10 @@ class VectorService:
     def __init__(self):
         try:
             print("正在加载向量模型: 尝试从模型库加载")
-            # 尝试不同的备选模型
             model_candidates = [
-                "shibing624/text2vec-base-chinese",  # 国内模型，较易访问
-                "moka-ai/m3e-small",  # 较小的模型版本
-                "cyclone/simcse-chinese-roberta-wwm-ext"  # 另一个备选
+                "shibing624/text2vec-base-chinese",
+                "moka-ai/m3e-small",
+                "cyclone/simcse-chinese-roberta-wwm-ext"
             ]
 
             for model_name in model_candidates:
@@ -60,12 +59,6 @@ class VectorService:
         self.index_file = os.path.join(self.cache_dir, 'faiss_index.bin')
         self.texts_file = os.path.join(self.cache_dir, 'texts.pkl')
         self.metadata_file = os.path.join(self.cache_dir, 'metadata.pkl')
-
-    # def encode(self, texts):
-    #     """将文本编码为向量"""
-    #     if not texts:
-    #         return np.array([])
-    #     return self.model.encode(texts, convert_to_tensor=False)
 
     def index_regulations(self, regulations):
         """为规范条例创建向量索引"""
@@ -145,6 +138,7 @@ class VectorService:
                     meta = self.metadata[idx]
                     result_item = {
                         'title': meta['source']['file'],
+                        'major_item_name': meta.get('major_item_name', ''),
                         'basis': meta.get('basis', ''),
                         'points': meta.get('points', ''),
                         'requirements': meta.get('requirements', ''),
@@ -229,18 +223,104 @@ class VectorService:
         return np.array(vectors)
 
     def encode(self, texts):
-        """对文本进行向量化，带备选方案"""
+        """对文本进行向量化，结合词频特征(0.7)和语义特征(0.3)"""
         try:
+            if not isinstance(texts, list):
+                texts = [texts]
+
+            # 1. 获取语义向量 (使用预训练模型)
             if self.model:
-                # 使用预训练模型
-                return self.model.encode(texts, show_progress_bar=False)
+                semantic_vectors = self.model.encode(texts, show_progress_bar=False)
             else:
-                # 使用备选简单方法
-                return self._simple_encode(texts)
+                # 如果没有预训练模型，使用备用方法
+                semantic_vectors = self._simple_encode(texts)
+
+            # 2. 生成词频向量
+            tfidf_vectors = self._generate_tfidf_vectors(texts)
+
+            # 3. 按权重合并向量 (词频0.7，语义0.3)
+            combined_vectors = []
+            for i in range(len(texts)):
+                # 确保向量维度一致
+                if tfidf_vectors[i].shape[0] != semantic_vectors[i].shape[0]:
+                    # 如果维度不一致，将两个向量调整为相同维度
+                    dim = min(tfidf_vectors[i].shape[0], semantic_vectors[i].shape[0])
+                    tf_vec = tfidf_vectors[i][:dim]
+                    sem_vec = semantic_vectors[i][:dim]
+                else:
+                    tf_vec = tfidf_vectors[i]
+                    sem_vec = semantic_vectors[i]
+
+                # 按权重合并
+                combined = 0.7 * tf_vec + 0.3 * sem_vec
+
+                # 归一化
+                norm = np.linalg.norm(combined)
+                if norm > 0:
+                    combined = combined / norm
+
+                combined_vectors.append(combined)
+
+            return np.array(combined_vectors)
+
         except Exception as e:
             print(f"向量化过程出错: {e}")
-            # 回退到简单方法
+            # 出错时回退到简单方法
             return self._simple_encode(texts)
 
+    def _generate_tfidf_vectors(self, texts):
+        """生成基于词频的向量表示"""
+        vectors = []
+
+        # 统计所有文档中的词汇
+        all_words = {}
+        for text in texts:
+            words = jieba.lcut(text)
+            for word in words:
+                if word not in all_words:
+                    all_words[word] = 0
+                all_words[word] += 1
+
+        # 词汇表大小
+        vocab_size = len(all_words)
+        if vocab_size == 0:
+            return np.zeros((len(texts), self.vector_dim))
+
+        # 计算IDF值
+        doc_count = len(texts)
+        word_idf = {}
+        for word, count in all_words.items():
+            word_idf[word] = np.log(doc_count / count)
+
+        # 为每个文档生成TF-IDF向量
+        for text in texts:
+            # 计算词频
+            word_counts = {}
+            words = jieba.lcut(text)
+            for word in words:
+                if word not in word_counts:
+                    word_counts[word] = 0
+                word_counts[word] += 1
+
+            # 生成向量
+            vec = np.zeros(self.vector_dim)
+            for word, count in word_counts.items():
+                # 计算TF-IDF值
+                tf = count / len(words)
+                idf = word_idf.get(word, 0)
+                tfidf = tf * idf
+
+                # 使用哈希将词映射到向量维度
+                idx = hash(word) % self.vector_dim
+                vec[idx] += tfidf
+
+            # 归一化
+            norm = np.linalg.norm(vec)
+            if norm > 0:
+                vec = vec / norm
+
+            vectors.append(vec)
+
+        return np.array(vectors)
 # 创建单例
 vector_service = VectorService()
