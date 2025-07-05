@@ -4,8 +4,7 @@ import pandas as pd
 import jieba
 import re
 from docx import Document
-from services.vector_service import vector_service
-from .vlm_service import client as vlm_client #
+#from services.vector_service import vector_service
 from pathlib import Path
 import json
 import time
@@ -133,54 +132,54 @@ class FileService:
         self.transformer_files = self._scan_files(self.transformer_cases_path, ['.docx', '.doc', '.pdf'])
         print(f"索引构建完成，共找到 {len(self.regulation_files)} 条技术条例文件，{len(self.case_files)} 条案例文件")
 
-        # 尝试加载向量索引缓存
-        if not vector_service.load_cache():
-            # 如果没有缓存，则首次启动时预加载所有规范进行向量化
-            print("未找到向量索引缓存，将创建新索引...")
-            self._preload_regulations_for_vector_index()
+        # # 尝试加载向量索引缓存
+        # if not vector_service.load_cache():
+        #     # 如果没有缓存，则首次启动时预加载所有规范进行向量化
+        #     print("未找到向量索引缓存，将创建新索引...")
+        #     self._preload_regulations_for_vector_index()
 
-    def _preload_regulations_for_vector_index(self):
-        """预加载所有规范并创建向量索引"""
-        all_regulations = []
-
-        for file_path in self.regulation_files:
-            try:
-                print(f"处理文件用于向量索引: {os.path.basename(file_path)}")
-                xls = pd.ExcelFile(file_path)
-
-                for sheet_name in xls.sheet_names:
-                    try:
-                        column_data, _ = self._find_columns_in_excel(file_path, sheet_name)
-                        if not column_data:
-                            continue
-
-                        for idx in range(len(next(iter(column_data.values())))):
-                            row_data = {}
-                            for col_name, col_data in column_data.items():
-                                if idx < len(col_data) and pd.notna(col_data.iloc[idx]):
-                                    row_data[col_name] = str(col_data.iloc[idx]).strip()
-
-                            if row_data:
-                                result = {
-                                    'title': f"{os.path.basename(file_path)} - {sheet_name}",
-                                    'major_item_name': row_data.get('major_item_name', ''),
-                                    'basis': row_data.get('监督依据', ''),
-                                    'points': row_data.get('监督要点', ''),
-                                    'requirements': row_data.get('监督要求', ''),
-                                    'source': {
-                                        'file': os.path.basename(file_path),
-                                        'sheet': sheet_name
-                                    }
-                                }
-                                all_regulations.append(result)
-                    except Exception as e:
-                        print(f"处理工作表 {sheet_name} 时出错: {str(e)}")
-            except Exception as e:
-                print(f"处理文件 {file_path} 时出错: {str(e)}")
-
-        # 创建向量索引
-        print(f"共收集了 {len(all_regulations)} 条规范条目")
-        vector_service.index_regulations(all_regulations)
+    # def _preload_regulations_for_vector_index(self):
+    #     """预加载所有规范并创建向量索引"""
+    #     all_regulations = []
+    #
+    #     for file_path in self.regulation_files:
+    #         try:
+    #             print(f"处理文件用于向量索引: {os.path.basename(file_path)}")
+    #             xls = pd.ExcelFile(file_path)
+    #
+    #             for sheet_name in xls.sheet_names:
+    #                 try:
+    #                     column_data, _ = self._find_columns_in_excel(file_path, sheet_name)
+    #                     if not column_data:
+    #                         continue
+    #
+    #                     for idx in range(len(next(iter(column_data.values())))):
+    #                         row_data = {}
+    #                         for col_name, col_data in column_data.items():
+    #                             if idx < len(col_data) and pd.notna(col_data.iloc[idx]):
+    #                                 row_data[col_name] = str(col_data.iloc[idx]).strip()
+    #
+    #                         if row_data:
+    #                             result = {
+    #                                 'title': f"{os.path.basename(file_path)} - {sheet_name}",
+    #                                 'major_item_name': row_data.get('major_item_name', ''),
+    #                                 'basis': row_data.get('监督依据', ''),
+    #                                 'points': row_data.get('监督要点', ''),
+    #                                 'requirements': row_data.get('监督要求', ''),
+    #                                 'source': {
+    #                                     'file': os.path.basename(file_path),
+    #                                     'sheet': sheet_name
+    #                                 }
+    #                             }
+    #                             all_regulations.append(result)
+    #                 except Exception as e:
+    #                     print(f"处理工作表 {sheet_name} 时出错: {str(e)}")
+    #         except Exception as e:
+    #             print(f"处理文件 {file_path} 时出错: {str(e)}")
+    #
+    #     # 创建向量索引
+    #     print(f"共收集了 {len(all_regulations)} 条规范条目")
+    #     vector_service.index_regulations(all_regulations)
     def _scan_files(self, directory, extensions):
         """扫描指定目录下的所有符合扩展名的文件"""
         files = []
@@ -206,10 +205,10 @@ class FileService:
         if stage:
             query_text = f"{stage} {query_text}"
 
-        # 如果使用向量搜索且没有指定特定文件
-        if use_vector_search and not specific_file:
-            # 增加检索数量，以获得更多候选结果
-            vector_results = vector_service.search(query_text, top_k=max_results * 5)
+        # # 如果使用向量搜索且没有指定特定文件
+        # if use_vector_search and not specific_file:
+        #     # 增加检索数量，以获得更多候选结果
+        #     vector_results = vector_service.search(query_text, top_k=max_results * 5)
 
             # 确保有返回结果且结构正确
             if not vector_results or not isinstance(vector_results, list):

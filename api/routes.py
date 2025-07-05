@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore", category=UserWarning,
                         message="Workbook contains no default style, apply openpyxl's default")
 
 # 导入服务
-from services.vlm_service import get_vlm_analysis
+from services.vlm_service import get_vlm_analysis, get_vlm_entities
 from services.neo4j_service import neo4j_service # neo4j服务已不再使用
 from services.word_service import create_word_report
 from services.file_service import file_service
@@ -259,43 +259,35 @@ def download_case_file(filename):
 
 @api_bp.route('/graph', methods=['POST'])
 def graph_analysis_from_text():
+    """
+    接收文本描述，调用独立的实体识别服务，并从Neo4j检索子图。
+    """
     # 1. 从表单中获取描述
     description = request.form.get('description')
     if not description:
         return jsonify({"error": "表单中未找到 'description' 字段或该字段为空"}), 400
 
-    # 2. 调用 VLM 服务进行分析和实体提取
-    vlm_result = get_vlm_analysis(description, image_path=None)
-    if "error" in vlm_result:
-        return jsonify({"error": "调用VLM模型进行实体识别失败", "details": vlm_result.get('error')}), 500
-
-    # 3. 解析 VLM 结果
+    # 2. 【修改点2】: 直接调用新的实体识别服务，获取实体列表
     try:
-        raw_content = vlm_result['content']
-        if '```' in raw_content:
-            start_index = raw_content.find('{')
-            end_index = raw_content.rfind('}')
-            json_string = raw_content[
-                          start_index:end_index + 1] if start_index != -1 and end_index != -1 else raw_content
-        else:
-            json_string = raw_content
-        analysis_content = json.loads(json_string)
-    except (json.JSONDecodeError, KeyError) as e:
-        return jsonify(
-            {"error": "解析VLM实体识别结果失败", "details": str(e), "raw_vlm_output": vlm_result.get('content')}), 500
+        entities_list = get_vlm_entities(description)
+        if not isinstance(entities_list, list):
+             # 兜底，以防VLM返回了意外的格式
+            print(f"警告：实体识别服务未返回列表，实际返回：{entities_list}")
+            return jsonify({"error": "实体识别服务返回格式错误"}), 500
 
-    entities_list = []
-    entities_data = analysis_content.get('entities', [])
-    if isinstance(entities_data, list):
-        entities_list = entities_data
-    elif isinstance(entities_data, str):
-        # 处理模型可能返回逗号分隔的字符串的情况
-        entities_list = [e.strip() for e in entities_data.split(',') if e.strip()]
+    except Exception as e:
+        current_app.logger.error(f"调用实体识别服务时发生严重错误: {str(e)}")
+        return jsonify({"error": "调用VLM模型进行实体识别失败", "details": str(e)}), 500
 
+    # 3. 【修改点3】: 简化了结果处理逻辑
     if not entities_list:
-        return jsonify({"message": "未能从描述中识别出有效实体", "subgraph": {"nodes": [], "links": []}}), 200
+        return jsonify({
+            "message": "未能从描述中识别出有效实体",
+            "entities_found": [],
+            "subgraph": {"nodes": [], "links": []}
+        }), 200
 
-    # 5. 调用 Neo4j 服务进行图数据库检索
+    # 4. 调用 Neo4j 服务进行图数据库检索
     try:
         subgraph_data = neo4j_service.get_subgraph_for_entities(entities_list)
         return jsonify({
