@@ -9,6 +9,9 @@ load_dotenv()
 def create_app():
     app = Flask(__name__)
 
+    # 【重要】启用CORS，允许所有来源的跨域请求
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
+
     # 确保上传目录存在
     upload_folder = os.path.join('static', 'uploads')
     reports_folder = os.path.join('static', 'reports')
@@ -17,6 +20,9 @@ def create_app():
         if not os.path.exists(folder):
             os.makedirs(folder)
     app.config['UPLOAD_FOLDER'] = upload_folder
+
+    # 创建一个简单的内存缓存
+    app.cache = {}
 
     # 从 api.routes 模块中导入并注册蓝图
     from api.routes import api_bp

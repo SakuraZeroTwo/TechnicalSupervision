@@ -5,19 +5,16 @@ import os
 import json
 import warnings
 import re
+import uuid
 
-# 忽略openpyxl的样式警告
 warnings.filterwarnings("ignore", category=UserWarning,
                         message="Workbook contains no default style, apply openpyxl's default")
 
-# 导入服务
 from services.vlm_service import get_vlm_analysis, get_vlm_entities
-from services.neo4j_service import neo4j_service # neo4j服务已不再使用
+from services.neo4j_service import neo4j_service
 from services.word_service import create_word_report
 from services.file_service import file_service
 
-
-# 创建一个蓝图
 api_bp = Blueprint('api', __name__)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -33,22 +30,14 @@ def analyze_issue():
     """
     核心功能端点：接收图片、描述和阶段，返回完整分析和报告链接
     """
-    # 1. 检查表单数据
-
     description = request.form.get('description', '')
     if not description:
         return jsonify({"error": "请求中未找到问题描述"}), 400
 
-    # 获取阶段参数
     stage = request.form.get('stage', None)
-
-    # 获取指定细则参数
     specific_file = request.form.get('specific_file', None)
-
-    # 是否生成报告
     generate_word = request.form.get('generate_word', 'true').lower() == 'true'
 
-    # 2.处理可选的图片
     image_path = None
     if 'image' in request.files and request.files['image'].filename:
         file = request.files['image']
@@ -59,60 +48,50 @@ def analyze_issue():
         elif file.filename != '':
             return jsonify({"error": "无效的图片文件"}), 400
 
-    # 3. 调用 VLM 服务进行分析,传入阶段参数
     vlm_result = get_vlm_analysis(description, image_path, stage)
     if "error" in vlm_result:
         return jsonify({"error": "调用VLM模型失败", "details": vlm_result.get('error')}), 500
 
-    # 4. 解析 VLM 返回的 JSON 结果
     try:
         raw_content = vlm_result['content']
-        # 清理模型可能返回的 Markdown 代码块
         if '```' in raw_content:
-            # 找到第一个 '{' 和最后一个 '}' 来提取 JSON 对象
             start_index = raw_content.find('{')
             end_index = raw_content.rfind('}')
             if start_index != -1 and end_index != -1:
                 json_string = raw_content[start_index:end_index + 1]
             else:
-                json_string = raw_content  # 如果找不到，则按原样尝试
+                json_string = raw_content
         else:
             json_string = raw_content
-
         analysis_content = json.loads(json_string)
     except (json.JSONDecodeError, KeyError) as e:
         return jsonify(
             {"error": "解析VLM返回结果失败", "details": str(e), "raw_vlm_output": vlm_result.get('content')}), 500
 
-    # 5. 直接从原始描述中提取关键词作为实体
     entities_list = [word for word in jieba.lcut(description) if len(word) >= 2]
-
-    # 从VLM结果中获取阶段和分析，但描述使用原始描述
     recognized_stage = analysis_content.get('stage', stage if stage else '运维检修阶段')
 
-    # 添加原始描述中的关键词作为实体
     if description:
         description_keywords = [w for w in jieba.lcut(description) if len(w) >= 2]
         for kw in description_keywords:
             if kw not in entities_list:
                 entities_list.append(kw)
 
-    # 6. 使用文件服务检索规范条例
     retrieved_regulations = []
     if entities_list:
         try:
             clean_stage = recognized_stage.replace("阶段", "") if recognized_stage else "运维检修"
-            retrieved_regulations = file_service.find_regulations_by_stage_and_keywords(clean_stage, entities_list, strict_stage_match=True, specific_file=specific_file,use_vector_search=True)
+            retrieved_regulations = file_service.find_regulations_by_stage_and_keywords(clean_stage, entities_list,
+                                                                                        strict_stage_match=True,
+                                                                                        specific_file=specific_file,
+                                                                                        use_vector_search=True)
         except Exception as e:
             current_app.logger.error(f"文件检索错误: {str(e)}")
 
-    # 7. 直接选用第一条检索到的条例
     best_regulation = {}
     if retrieved_regulations:
-        # file_service 返回的结果已经按相关性排序，直接取第一个即可
         best_regulation = retrieved_regulations[0]
 
-    # 8. 准备用于前端展示的结构化数据
     display_data = {
         "description": {
             "title": "问题描述",
@@ -137,22 +116,19 @@ def analyze_issue():
         }
     }
 
-    # 获取历史案例并为其添加下载链接
-    historical_cases = file_service.find_historical_cases_by_entities(entities_list, recognized_stage, strict_stage_match=True)
+    historical_cases = file_service.find_historical_cases_by_entities(entities_list, recognized_stage,
+                                                                      strict_stage_match=True)
     for case in historical_cases:
         if 'source' in case:
-            # 构建完整的下载URL
             case['download_url'] = f"{request.host_url}api/download/case/{case['source']}"
 
-    # 9. 准备最终响应
     final_response = {
         "display_data": display_data,
-        "historical_cases":  historical_cases,
-        "regulations": retrieved_regulations, # 返回所有检索到的条例供前端选择
+        "historical_cases": historical_cases,
+        "regulations": retrieved_regulations,
         "report_url": None
     }
 
-    # 10. 如果需要生成Word报告
     if generate_word:
         word_report_data = {
             'case_name': '待补充',
@@ -172,21 +148,13 @@ def analyze_issue():
         }
 
         if best_regulation:
-            # 提取大项名称前的数字（例如从"9.1电气设备性能"提取"9.1"）
             major_item_name = best_regulation.get('major_item_name', '')
             points_text = best_regulation.get('points', '')
-
-            # 更精确的正则表达式，匹配大项名称前面的数字部分
             major_num_match = re.search(r'^(\d+(\.\d+)*)', major_item_name)
-
-            # 从监督要点中提取编号（如从"1. 内容"提取"1"）
             points_num_match = re.search(r'^[（\(]?(\d+)[）\)\.、]*', points_text)
-
-            # 提取并清理编号
             major_num = major_num_match.group(1) if major_num_match else ''
             points_num = points_num_match.group(1) if points_num_match else ''
 
-            # 拼接条款序号
             if major_num and points_num:
                 clause_number = f"{major_num}.{points_num}"
                 word_report_data['regulation']['clause'] = clause_number
@@ -204,21 +172,12 @@ def analyze_issue():
     return jsonify(final_response)
 
 
-# 添加阶段获取端点
 @api_bp.route('/stages', methods=['GET'])
 def get_available_stages():
     """获取系统中所有可用的阶段列表"""
     stages = [
-        "规划可研阶段",
-        "工程设计阶段",
-        "设备采购阶段",
-        "设备制造阶段",
-        "设备验收阶段",
-        "设备安装阶段",
-        "设备调试阶段",
-        "竣工验收阶段",
-        "运维检修阶段",
-        "退役报废阶段"
+        "规划可研阶段", "工程设计阶段", "设备采购阶段", "设备制造阶段", "设备验收阶段",
+        "设备安装阶段", "设备调试阶段", "竣工验收阶段", "运维检修阶段", "退役报废阶段"
     ]
     return jsonify({"stages": stages})
 
@@ -229,26 +188,20 @@ def search_historical_cases():
     data = request.get_json()
     entities = data.get('entities', [])
     stage = data.get('stage', None)
-
     if not entities:
         return jsonify({"error": "实体列表不能为空"}), 400
-
     cases = file_service.find_historical_cases_by_entities(entities, stage)
-    # 下载链接
     for case in cases:
         if 'source' in case:
             case['download_url'] = f"{request.host_url}api/download/case/{case['source']}"
     return jsonify(cases)
 
 
-# 案例文件下载端点
 @api_bp.route('/download/case/<path:filename>', methods=['GET'])
 def download_case_file(filename):
     """提供历史案例文档的下载"""
     try:
-        # 从 file_service 获取案例文件存放的目录
         case_directory = file_service.cases_path
-        # 使用 send_from_directory 安全地发送文件
         return send_from_directory(case_directory, filename, as_attachment=True)
     except FileNotFoundError:
         return jsonify({"error": "文件未找到"}), 404
@@ -257,43 +210,102 @@ def download_case_file(filename):
         return jsonify({"error": "服务器内部错误"}), 500
 
 
+@api_bp.route('/generate_answer', methods=['POST'])
+def generate_answer_and_cases():
+    """
+    【功能2 - 按钮1】的后端接口。
+    接收描述，生成 Answer 和历史案例，并返回一个唯一的 task_id。
+    """
+    description = request.form.get('description', '')
+    if not description:
+        return jsonify({"error": "请求中未找到问题描述"}), 400
+
+    try:
+        vlm_result = get_vlm_analysis(description, image_path=None, stage=None)
+        if "error" in vlm_result:
+            return jsonify({"error": "调用VLM模型失败", "details": vlm_result.get('error')}), 500
+
+        raw_content = vlm_result['content']
+        json_string = raw_content
+        if '```' in raw_content:
+            start_index = raw_content.find('{')
+            end_index = raw_content.rfind('}')
+            if start_index != -1 and end_index != -1:
+                json_string = raw_content[start_index:end_index + 1]
+
+        analysis_content = json.loads(json_string)
+
+    except (json.JSONDecodeError, KeyError) as e:
+        return jsonify(
+            {"error": "解析VLM返回结果失败", "details": str(e), "raw_vlm_output": vlm_result.get('content')}), 500
+
+    answer = {
+        "status_description": analysis_content.get('status_description', '暂无状态描述'),
+        "cause_analysis": analysis_content.get('cause_analysis', '暂无原因分析'),
+        "supervision_suggestion": analysis_content.get('supervision_suggestion', '暂无监督意见')
+    }
+
+    entities_list = analysis_content.get('entities', [])
+    if not entities_list:
+        entities_list = [word for word in jieba.lcut(description) if len(word) >= 2]
+
+    historical_cases = file_service.find_historical_cases_by_entities(entities_list)
+    for case in historical_cases:
+        if 'source' in case:
+            case['download_url'] = f"{request.host_url}api/download/case/{case['source']}"
+
+    task_id = str(uuid.uuid4())
+    cached_data = {
+        "description": description,
+        "analysis_text": answer.get('cause_analysis', '')
+    }
+
+    current_app.cache[task_id] = cached_data
+
+    return jsonify({
+        "task_id": task_id,
+        "answer": answer,
+        "historical_cases": historical_cases
+    })
+
+
 @api_bp.route('/graph', methods=['POST'])
 def graph_analysis_from_text():
     """
-    接收文本描述，调用独立的实体识别服务，并从Neo4j检索子图。
+    【功能2 - 按钮2】的后端接口。
+    接收 description 和可选的 task_id，进行交叉验证后生成图谱。
     """
-    # 1. 从表单中获取描述
-    description = request.form.get('description')
+    description = request.form.get('description', '')
     if not description:
-        return jsonify({"error": "表单中未找到 'description' 字段或该字段为空"}), 400
+        return jsonify({"error": "问题描述(description)是必需的"}), 400
 
-    # 2. 【修改点2】: 直接调用新的实体识别服务，获取实体列表
+    task_id = request.form.get('task_id')
+
+    analysis_text = ""
+    use_context = False
+
+    if task_id:
+        task_data = current_app.cache.get(task_id)
+        if task_data and task_data.get("description", "").strip() == description.strip():
+            analysis_text = task_data.get("analysis_text", "")
+            use_context = True
+
+    if use_context:
+        text_for_ner = description + " " + analysis_text
+    else:
+        text_for_ner = description
+
     try:
-        entities_list = get_vlm_entities(description)
-        if not isinstance(entities_list, list):
-             # 兜底，以防VLM返回了意外的格式
-            print(f"警告：实体识别服务未返回列表，实际返回：{entities_list}")
-            return jsonify({"error": "实体识别服务返回格式错误"}), 500
+        entities_list = get_vlm_entities(text_for_ner)
+        if not entities_list:
+            return jsonify({"message": "未能识别出有效实体", "subgraph": {"nodes": [], "links": []}}), 200
 
-    except Exception as e:
-        current_app.logger.error(f"调用实体识别服务时发生严重错误: {str(e)}")
-        return jsonify({"error": "调用VLM模型进行实体识别失败", "details": str(e)}), 500
-
-    # 3. 【修改点3】: 简化了结果处理逻辑
-    if not entities_list:
-        return jsonify({
-            "message": "未能从描述中识别出有效实体",
-            "entities_found": [],
-            "subgraph": {"nodes": [], "links": []}
-        }), 200
-
-    # 4. 调用 Neo4j 服务进行图数据库检索
-    try:
         subgraph_data = neo4j_service.get_subgraph_for_entities(entities_list)
+
         return jsonify({
             "entities_found": entities_list,
             "subgraph": subgraph_data
         })
     except Exception as e:
-        current_app.logger.error(f"图数据库检索失败: {str(e)}")
-        return jsonify({"error": "图数据库检索时发生内部错误", "details": str(e)}), 500
+        current_app.logger.error(f"图谱生成过程中出错: {e}")
+        return jsonify({"error": "图谱生成过程中发生内部错误"}), 500
