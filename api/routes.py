@@ -5,14 +5,15 @@ import os
 import json
 import warnings
 import re
+import uuid
 
 # 忽略openpyxl的样式警告
 warnings.filterwarnings("ignore", category=UserWarning,
                         message="Workbook contains no default style, apply openpyxl's default")
 
 # 导入服务
-from services.vlm_service import get_vlm_analysis
 from services.neo4j_service import neo4j_service # neo4j服务已不再使用
+from services.vlm_service import get_vlm_analysis, get_vlm_entities
 from services.word_service import create_word_report
 from services.file_service import file_service
 from services.vlm_service import rerank_regulations_with_vlm
@@ -279,51 +280,102 @@ def download_case_file(filename):
         return jsonify({"error": "服务器内部错误"}), 500
 
 
-@api_bp.route('/graph', methods=['POST'])
-def graph_analysis_from_text():
-    # 1. 从表单中获取描述
-    description = request.form.get('description')
+@api_bp.route('/generate_answer', methods=['POST'])
+def generate_answer_and_cases():
+    """
+    【功能2 - 按钮1】的后端接口。
+    接收描述，生成 Answer 和历史案例，并返回一个唯一的 task_id。
+    """
+    description = request.form.get('description', '')
     if not description:
-        return jsonify({"error": "表单中未找到 'description' 字段或该字段为空"}), 400
+        return jsonify({"error": "请求中未找到问题描述"}), 400
 
-    # 2. 调用 VLM 服务进行分析和实体提取
-    vlm_result = get_vlm_analysis(description, image_path=None)
-    if "error" in vlm_result:
-        return jsonify({"error": "调用VLM模型进行实体识别失败", "details": vlm_result.get('error')}), 500
-
-    # 3. 解析 VLM 结果
     try:
+        vlm_result = get_vlm_analysis(description, image_path=None, stage=None)
+        if "error" in vlm_result:
+            return jsonify({"error": "调用VLM模型失败", "details": vlm_result.get('error')}), 500
+
         raw_content = vlm_result['content']
+        json_string = raw_content
         if '```' in raw_content:
             start_index = raw_content.find('{')
             end_index = raw_content.rfind('}')
-            json_string = raw_content[
-                          start_index:end_index + 1] if start_index != -1 and end_index != -1 else raw_content
-        else:
-            json_string = raw_content
+            if start_index != -1 and end_index != -1:
+                json_string = raw_content[start_index:end_index + 1]
+
         analysis_content = json.loads(json_string)
+
     except (json.JSONDecodeError, KeyError) as e:
         return jsonify(
-            {"error": "解析VLM实体识别结果失败", "details": str(e), "raw_vlm_output": vlm_result.get('content')}), 500
+            {"error": "解析VLM返回结果失败", "details": str(e), "raw_vlm_output": vlm_result.get('content')}), 500
 
-    entities_list = []
-    entities_data = analysis_content.get('entities', [])
-    if isinstance(entities_data, list):
-        entities_list = entities_data
-    elif isinstance(entities_data, str):
-        # 处理模型可能返回逗号分隔的字符串的情况
-        entities_list = [e.strip() for e in entities_data.split(',') if e.strip()]
+    answer = {
+        "status_description": analysis_content.get('status_description', '暂无状态描述'),
+        "cause_analysis": analysis_content.get('cause_analysis', '暂无原因分析'),
+        "supervision_suggestion": analysis_content.get('supervision_suggestion', '暂无监督意见')
+    }
 
+    entities_list = analysis_content.get('entities', [])
     if not entities_list:
-        return jsonify({"message": "未能从描述中识别出有效实体", "subgraph": {"nodes": [], "links": []}}), 200
+        entities_list = [word for word in jieba.lcut(description) if len(word) >= 2]
 
-    # 5. 调用 Neo4j 服务进行图数据库检索
+    historical_cases = file_service.find_historical_cases_by_entities(entities_list)
+    for case in historical_cases:
+        if 'source' in case:
+            case['download_url'] = f"{request.host_url}api/download/case/{case['source']}"
+
+    task_id = str(uuid.uuid4())
+    cached_data = {
+        "description": description,
+        "analysis_text": answer.get('cause_analysis', '')
+    }
+
+    current_app.cache[task_id] = cached_data
+
+    return jsonify({
+        "task_id": task_id,
+        "answer": answer,
+        "historical_cases": historical_cases
+    })
+
+
+@api_bp.route('/graph', methods=['POST'])
+def graph_analysis_from_text():
+    """
+    【功能2 - 按钮2】的后端接口。
+    接收 description 和可选的 task_id，进行交叉验证后生成图谱。
+    """
+    description = request.form.get('description', '')
+    if not description:
+        return jsonify({"error": "问题描述(description)是必需的"}), 400
+
+    task_id = request.form.get('task_id')
+
+    analysis_text = ""
+    use_context = False
+
+    if task_id:
+        task_data = current_app.cache.get(task_id)
+        if task_data and task_data.get("description", "").strip() == description.strip():
+            analysis_text = task_data.get("analysis_text", "")
+            use_context = True
+
+    if use_context:
+        text_for_ner = description + " " + analysis_text
+    else:
+        text_for_ner = description
+
     try:
+        entities_list = get_vlm_entities(text_for_ner)
+        if not entities_list:
+            return jsonify({"message": "未能识别出有效实体", "subgraph": {"nodes": [], "links": []}}), 200
+
         subgraph_data = neo4j_service.get_subgraph_for_entities(entities_list)
+
         return jsonify({
             "entities_found": entities_list,
             "subgraph": subgraph_data
         })
     except Exception as e:
-        current_app.logger.error(f"图数据库检索失败: {str(e)}")
-        return jsonify({"error": "图数据库检索时发生内部错误", "details": str(e)}), 500
+        current_app.logger.error(f"图谱生成过程中出错: {e}")
+        return jsonify({"error": "图谱生成过程中发生内部错误"}), 500

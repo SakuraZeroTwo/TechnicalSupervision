@@ -3,6 +3,7 @@ import base64
 from openai import OpenAI
 from .file_service import file_service
 import re
+import json
 
 KNOWN_ENTITIES_STR = file_service.known_entities_str
 # -------------------------------------------------------------------------
@@ -114,6 +115,78 @@ def get_vlm_analysis(prompt_text: str, image_path: str = None, stage: str = None
     except Exception as e:
         print(f"调用 VLM API 时发生错误: {e}")
         return {"error": str(e)}
+
+def get_vlm_entities(prompt_text: str) -> list:
+    """
+    【优化版】
+    调用 qwen-vl-max 模型，专门用于从文本中提取实体。
+
+    Args:
+        prompt_text: 用户的输入文本描述。
+
+    Returns:
+        一个包含实体字符串的 Python 列表，例如 ["绝缘子", "裂纹"]。
+        如果失败则返回空列表。
+    """
+    if not client:
+        print("错误: VLM客户端未初始化。")
+        return []
+
+    # 【优化版】专门为实体识别设计的、更简洁的提示词
+    entity_prompt = f"""
+    你是一个专业的电力领域命名实体识别（NER）工具。你的任务是从用户描述中，识别出所有符合以下规则的设备实体或故障现象实体。
+
+    **识别规则**:
+    1.  **优先匹配**: 请优先从 '已知实体列表' 中进行识别和匹配。
+    2.  **泛化识别**: 请识别通用名称（如 '变压器'），而不是具体型号。
+    3.  **已知实体列表**: [{KNOWN_ENTITIES_STR}]
+
+    ---
+    下面是一个处理示例，请严格模仿它的行为：
+    [输入示例]
+    用户描述: "检查发现主变压器出现异响，怀疑是内部有局部放电，而且套管上有明显裂纹，需要立即处理。"
+    [输出示例]
+    ["变压器", "异响", "局部放电", "套管", "裂纹"]
+    **输出格式要求**:
+    你的输出必须是一个标准的、可以直接用 `json.loads` 解析的Python列表格式的JSON字符串。
+    绝对不要包含任何额外的解释性文字、Markdown标记或 "输出示例" 这个词本身。
+    现在，请处理以下真实的用户描述，并返回所有识别出的实体
+    请注意，”主变压器““主变”等类似的实体列表中有但表述略有不同的应该直接识别为列表内实体：
+
+    [真实输入]
+    用户描述: "{prompt_text}"
+    """
+
+    messages = [{"role": "user", "content": entity_prompt}]
+
+    try:
+        completion = client.chat.completions.create(
+            model="qwen-vl-max",
+            messages=messages,
+            # 【优化点3: 适当提高温度，鼓励模型识别更多可能实体】
+            temperature=0.1
+        )
+        content = completion.choices[0].message.content
+
+        # 清理并解析JSON
+        start_index = content.find('[')
+        end_index = content.rfind(']')
+        if start_index != -1 and end_index != -1:
+            json_string = content[start_index:end_index + 1]
+            # 去除可能存在的重复项
+            entities = json.loads(json_string)
+            return list(dict.fromkeys(entities))  # 用字典去重并保持顺序
+        else:
+            print(f"警告: VLM未能返回有效的列表格式。原始返回: {content}")
+            return []
+
+    except json.JSONDecodeError as e:
+        print(f"解析VLM实体识别结果失败: {e}")
+        print(f"原始返回内容: {content}")
+        return []
+    except Exception as e:
+        print(f"调用 VLM API 进行实体识别时发生错误: {e}")
+        return []
 
 def rerank_regulations_with_vlm(description: str, regulations: list) -> list:
     """
