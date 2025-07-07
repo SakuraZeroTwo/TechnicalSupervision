@@ -89,7 +89,7 @@ def analyze_issue():
     entities_list = analysis_content.get('entities', [])
     if isinstance(entities_list, str):
         entities_list = [e.strip() for e in entities_list.split(',') if e.strip()]
-    recognized_stage = analysis_content.get('stage', stage if stage else '运维检修阶段')
+    recognized_stage = stage
 
     # 添加原始描述中的关键词作为实体
     description_keywords = [w for w in jieba.lcut(description) if len(w) >= 2]
@@ -98,7 +98,7 @@ def analyze_issue():
             entities_list.append(kw)
 
     # 6. 使用文件服务检索规范条例
-    clean_stage = recognized_stage.replace("阶段", "") if recognized_stage else "运维检修"
+    clean_stage = recognized_stage.replace("阶段", "") if recognized_stage else None
     # 【第一阶段：向量召回】从 file_service 获取一个较大的候选集
     candidate_regulations = file_service.find_regulations_by_stage_and_keywords(
         stage=clean_stage,

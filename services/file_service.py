@@ -248,41 +248,46 @@ class FileService:
                 return self.find_regulations_by_stage_and_keywords_traditional(stage, keywords, max_results,
                                                                       strict_stage_match, specific_file)
 
-            filtered_results = []
-            stage_filtered_count = 0
+            # filtered_results = []
+            # stage_filtered_count = 0
+            #
+            # for result in vector_results:
+            #     # 允许接受更多结果，不设置相似度下限
+            #     filtered_results.append(result)
+            #
+            #     # 仅统计阶段匹配情况，不作为过滤条件
+            #     if stage and strict_stage_match:
+            #         result_stage = result.get('stage', '')
+            #         source = result.get('source', {})
+            #         sheet_name = source.get('sheet', '')
+            #
+            #         # 检查阶段匹配
+            #         normalized_stage = self._normalize_stage(stage)
+            #         if (normalized_stage.lower() in sheet_name.lower() or
+            #                 normalized_stage.lower() in result_stage.lower()):
+            #             stage_filtered_count += 1
+            #
+            # print(f"向量搜索原始结果: {len(vector_results)}条, 阶段匹配: {stage_filtered_count}条")
 
-            for result in vector_results:
-                # 允许接受更多结果，不设置相似度下限
-                filtered_results.append(result)
-
-                # 仅统计阶段匹配情况，不作为过滤条件
-                if stage and strict_stage_match:
-                    result_stage = result.get('stage', '')
-                    source = result.get('source', {})
-                    sheet_name = source.get('sheet', '')
-
-                    # 检查阶段匹配
-                    normalized_stage = self._normalize_stage(stage)
-                    if (normalized_stage.lower() in sheet_name.lower() or
-                            normalized_stage.lower() in result_stage.lower()):
-                        stage_filtered_count += 1
-
-            print(f"向量搜索原始结果: {len(vector_results)}条, 阶段匹配: {stage_filtered_count}条")
-
-            # 仅当有严格阶段要求时，对结果进行阶段过滤
-            if stage and strict_stage_match and stage_filtered_count > 0:
+            # 仅当提供了 stage 且要求严格匹配时，才进行阶段过滤
+            if stage and strict_stage_match:
                 strict_results = []
-                for result in filtered_results:
+                normalized_stage = self._normalize_stage(stage)
+                for result in vector_results:
                     result_stage = result.get('stage', '')
                     source = result.get('source', {})
                     sheet_name = source.get('sheet', '')
 
-                    normalized_stage = self._normalize_stage(stage)
                     if (normalized_stage.lower() in sheet_name.lower() or
                             normalized_stage.lower() in result_stage.lower()):
                         strict_results.append(result)
 
+                print(f"向量搜索原始结果: {len(vector_results)}条, 阶段过滤后: {len(strict_results)}条")
                 filtered_results = strict_results
+            else:
+                # 如果不提供 stage 或不要求严格匹配，则返回所有向量搜索结果
+                print(f"向量搜索原始结果: {len(vector_results)}条, 未进行阶段过滤")
+                filtered_results = vector_results
 
             print(f"向量搜索完成，找到 {len(filtered_results)} 条匹配的规范")
             print(f"查询耗时: {time.time() - start_time:.2f}秒")
@@ -313,8 +318,9 @@ class FileService:
 
         print(f"扩展后的关键词: {expanded_keywords}")
 
-        normalized_stage = self._normalize_stage(stage)
-        print(f"标准化后的阶段: {normalized_stage}")
+        normalized_stage = self._normalize_stage(stage) if stage else None
+        if normalized_stage:
+            print(f"标准化后的阶段: {normalized_stage}")
 
         # 如果指定了特定文件，只处理匹配该文件名的文件
         if specific_file:
@@ -352,20 +358,23 @@ class FileService:
                 xls = pd.ExcelFile(file_path)
 
                 target_sheets = []
-                for sheet_name in xls.sheet_names:
-                    if normalized_stage.lower() in sheet_name.lower():
-                        target_sheets.append(sheet_name)
-
-                if not target_sheets and strict_stage_match:
-                    continue
-                elif not target_sheets:
-                    target_sheets = [xls.sheet_names[0]]
+                if normalized_stage:
+                    for sheet_name in xls.sheet_names:
+                        if normalized_stage.lower() in sheet_name.lower():
+                            target_sheets.append(sheet_name)
+                    if not target_sheets and strict_stage_match:
+                        continue
+                    elif not target_sheets:
+                        target_sheets = xls.sheet_names # 如果找不到匹配的工作表，则搜索所有工作表
+                else:
+                    # 如果没有提供阶段，则搜索所有工作表
+                    target_sheets = xls.sheet_names
 
                 for sheet_name in target_sheets:
                     try:
                         print(f"  处理工作表: {sheet_name}")
 
-                        # 【修正】初始化data_start_row，避免引用前未赋值的错误
+                        # 初始化data_start_row，避免引用前未赋值的错误
                         data_start_row = 3  # 默认数据从第4行开始（索引为3）
 
                         column_data, col_indices = self._find_columns_in_excel(file_path, sheet_name)
@@ -444,7 +453,7 @@ class FileService:
     def _normalize_stage(self, stage):
         """将阶段名称标准化为系统内部使用的格式"""
         if not stage:
-            return "运维检修"
+            return None
 
         # 移除"阶段"字样以提高匹配率
         clean_stage = stage.replace("阶段", "")
@@ -459,7 +468,7 @@ class FileService:
                 if alias in clean_stage:
                     return key
 
-        return "运维检修"  # 默认阶段
+        return None  # 默认阶段
 
     # def find_historical_cases_by_entities(self, entities, stage=None, strict_stage_match = False):
     #     """
