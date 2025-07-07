@@ -132,11 +132,16 @@ class FileService:
         self.transformer_files = self._scan_files(self.transformer_cases_path, ['.docx', '.doc', '.pdf'])
         print(f"索引构建完成，共找到 {len(self.regulation_files)} 条技术条例文件，{len(self.case_files)} 条案例文件")
 
-        # 尝试加载向量索引缓存
+        # 尝试加载技术监督条例向量索引缓存
         if not vector_service.load_cache():
             # 如果没有缓存，则首次启动时预加载所有规范进行向量化
             print("未找到向量索引缓存，将创建新索引...")
             self._preload_regulations_for_vector_index()
+
+        # 尝试加载历史案例向量索引缓存
+        if not vector_service.load_case_cache():
+            print("未找到案例向量索引缓存，将创建新索引...")
+            self._preload_cases_for_vector_index()
 
     def _preload_regulations_for_vector_index(self):
         """预加载所有规范并创建向量索引"""
@@ -180,6 +185,33 @@ class FileService:
         # 创建向量索引
         print(f"共收集了 {len(all_regulations)} 条规范条目")
         vector_service.index_regulations(all_regulations)
+
+    def _preload_cases_for_vector_index(self):
+        """预加载所有历史案例并创建向量索引"""
+        all_cases_data = []
+        print("开始预加载案例文件用于向量索引...")
+        for file_path in self.case_files:
+            try:
+                doc = Document(file_path)
+                full_text = "\n".join([p.text for p in doc.paragraphs])
+                title = os.path.basename(file_path)
+                if doc.paragraphs and doc.paragraphs[0].text.strip():
+                    title = doc.paragraphs[0].text.strip()
+
+                if full_text.strip():
+                    all_cases_data.append({
+                        'text': full_text,
+                        'title': title,
+                        'source': os.path.basename(file_path)
+                    })
+            except Exception as e:
+                print(f"处理案例文件 {file_path} 时出错: {e}")
+
+        if all_cases_data:
+            print(f"共收集了 {len(all_cases_data)} 个案例用于索引。")
+            vector_service.index_cases(all_cases_data)
+        else:
+            print("未能从文件中加载任何案例数据。")
     def _scan_files(self, directory, extensions):
         """扫描指定目录下的所有符合扩展名的文件"""
         files = []
@@ -429,51 +461,70 @@ class FileService:
 
         return "运维检修"  # 默认阶段
 
-    def find_historical_cases_by_entities(self, entities, stage=None, strict_stage_match = False):
+    # def find_historical_cases_by_entities(self, entities, stage=None, strict_stage_match = False):
+    #     """
+    #     根据实体关键词和可选阶段查询历史案例文档
+    #     """
+    #     results = []
+    #
+    #     # 标准化输入
+    #     if isinstance(entities, str):
+    #         entities = [entities]
+    #
+    #     print(f"检索案例 - 关键词: {entities}, 阶段: {stage}")
+    #
+    #     processed_files = 0
+    #     matched_files = 0
+    #
+    #     for file_path in self.case_files:
+    #         if not file_path.endswith(('.docx', '.doc')):
+    #             continue
+    #
+    #         try:
+    #             processed_files += 1
+    #             # 正确调用方法，传递文件路径而非self对象
+    #             result = self.search_docx_for_keywords(file_path, entities)
+    #
+    #             if result:
+    #                 matched_files += 1
+    #                 # 如果指定了阶段，尝试进行阶段匹配
+    #                 if stage and "stage" in result:
+    #                     stage_match = self._match_stage(result.get("stage", ""), stage)
+    #                     if not stage_match:
+    #                         if strict_stage_match:
+    #                             continue  # 严格模式下跳过不匹配的结果
+    #                         else:
+    #                             result["match_score"] *= 0.7  # 非严格模式降低分数
+    #
+    #                 results.append(result)
+    #         except Exception as e:
+    #             print(f"处理文件 {file_path} 时出错: {str(e)}")
+    #
+    #     print(f"检索统计: 处理了{processed_files}个文件, 匹配到{matched_files}个结果")
+    #
+    #     # 按匹配分数排序
+    #     results.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+    #
+    #     # 返回前3个结果
+    #     return results[:3]
+    def find_historical_cases_by_entities(self, entities, stage=None, strict_stage_match=False):
         """
-        根据实体关键词和可选阶段查询历史案例文档
+        【新版】根据实体关键词和可选阶段，使用向量搜索查询历史案例文档
         """
-        results = []
-
-        # 标准化输入
         if isinstance(entities, str):
             entities = [entities]
 
-        print(f"检索案例 - 关键词: {entities}, 阶段: {stage}")
+        # 构建查询文本
+        query_text = " ".join(entities)
+        if stage:
+            query_text = f"{self._normalize_stage(stage)} {query_text}"
 
-        processed_files = 0
-        matched_files = 0
+        print(f"开始向量搜索案例 - 查询: '{query_text}'")
 
-        for file_path in self.case_files:
-            if not file_path.endswith(('.docx', '.doc')):
-                continue
+        # 调用向量服务的案例搜索功能
+        results = vector_service.search_cases(query=query_text, keywords=entities, top_k=3)
 
-            try:
-                processed_files += 1
-                # 正确调用方法，传递文件路径而非self对象
-                result = self.search_docx_for_keywords(file_path, entities)
-
-                if result:
-                    matched_files += 1
-                    # 如果指定了阶段，尝试进行阶段匹配
-                    if stage and "stage" in result:
-                        stage_match = self._match_stage(result.get("stage", ""), stage)
-                        if not stage_match:
-                            if strict_stage_match:
-                                continue  # 严格模式下跳过不匹配的结果
-                            else:
-                                result["match_score"] *= 0.7  # 非严格模式降低分数
-
-                    results.append(result)
-            except Exception as e:
-                print(f"处理文件 {file_path} 时出错: {str(e)}")
-
-        print(f"检索统计: 处理了{processed_files}个文件, 匹配到{matched_files}个结果")
-
-        # 按匹配分数排序
-        results.sort(key=lambda x: x.get("match_score", 0), reverse=True)
-
-        # 返回前3个结果
+        print(f"案例向量搜索完成，找到 {len(results)} 条结果。")
         return results[:3]
 
     def search_docx_for_keywords(self, file_path, keywords, threshold=1):
