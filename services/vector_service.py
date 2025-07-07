@@ -203,6 +203,8 @@ class VectorService:
                 meta = self.metadata[idx]
                 result_item = {
                     'title': meta['source']['file'],
+                    'major_item_name': meta.get('major_item_name', ''),
+                    'supervision_number': meta.get('supervision_number', ''),
                     'basis': meta.get('basis', ''),
                     'points': meta.get('points', ''),
                     'requirements': meta.get('requirements', ''),

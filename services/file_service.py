@@ -79,7 +79,8 @@ class FileService:
 
         # 定义可能的列名及其别名
         column_mappings = {
-            'major_item_name': ['大项名称', '大项', '项目名称'],  # 【新增】
+            '大项名称': ['大项名称', '大项', '项目名称'],
+            '监督项目序号': ['监督项目序号', '项目序号', '序号', '编号', '监督序号'],
             '监督依据': ['监督依据', '依据', '技术依据', '标准依据', '规范依据'],
             '监督要点': ['监督要点', '要点', '监督重点', '检查要点', '关键点'],
             '监督要求': ['监督要求', '要求', '技术要求', '规范要求', '检查要求']
@@ -167,7 +168,8 @@ class FileService:
                             if row_data:
                                 result = {
                                     'title': f"{os.path.basename(file_path)} - {sheet_name}",
-                                    'major_item_name': row_data.get('major_item_name', ''),
+                                    'major_item_name': row_data.get('大项名称', ''),
+                                    'supervision_number': row_data.get('监督项目序号', ''),
                                     'basis': row_data.get('监督依据', ''),
                                     'points': row_data.get('监督要点', ''),
                                     'requirements': row_data.get('监督要求', ''),

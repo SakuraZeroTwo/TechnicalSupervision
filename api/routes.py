@@ -195,30 +195,28 @@ def analyze_issue():
         }
 
         if best_regulation:
-            # 提取大项名称前的数字（例如从"9.1电气设备性能"提取"9.1"）
-            major_item_name = best_regulation.get('major_item_name', '')
-            points_text = best_regulation.get('points', '')
+            # 1. 从规范数据中获取大项名称和监督项目序号
+            major_item = best_regulation.get('major_item_name', '')
+            super_num = str(best_regulation.get('supervision_number', '')).strip()
 
-            # 更精确的正则表达式，匹配大项名称前面的数字部分
-            major_num_match = re.search(r'^(\d+(\.\d+)*)', major_item_name)
-
-            # 从监督要点中提取编号（如从"1. 内容"提取"1"）
-            points_num_match = re.search(r'^[（\(]?(\d+)[）\)\.、]*', points_text)
-
-            # 提取并清理编号
+            # 2. 从大项名称中提取开头的数字 (例如 "1.1 电气主接线")
+            major_num_match = re.match(r'^(\d+(?:\.\d+)*)', major_item)
             major_num = major_num_match.group(1) if major_num_match else ''
-            points_num = points_num_match.group(1) if points_num_match else ''
 
-            # 拼接条款序号
-            if major_num and points_num:
-                clause_number = f"{major_num}.{points_num}"
-                word_report_data['regulation']['clause'] = clause_number
+            # 3. 拼接成新的条款序号
+            if major_num and super_num:
+                # 确保监督项目序号不是纯数字0
+                if super_num != '0':
+                    clause_no = f"{major_num}.{super_num}"
+                else:
+                    clause_no = major_num
             elif major_num:
-                word_report_data['regulation']['clause'] = major_num
-            elif points_num:
-                word_report_data['regulation']['clause'] = points_num
+                clause_no = major_num
             else:
-                word_report_data['regulation']['clause'] = "未知"
+                clause_no = super_num or '未知'
+
+            # 4. 将组合好的条款序号写入报告数据
+            word_report_data['regulation']['clause'] = clause_no
 
         report_path = create_word_report(word_report_data, image_path)
         report_url = request.host_url + 'static/reports/' + os.path.basename(report_path)
