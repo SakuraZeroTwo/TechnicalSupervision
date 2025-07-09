@@ -240,7 +240,7 @@ class FileService:
             query_text = f"{stage} {query_text}"
 
         # 如果使用向量搜索且没有指定特定文件
-        if use_vector_search and not specific_file:
+        if use_vector_search:
             # 增加检索数量，以获得更多候选结果
             vector_results = vector_service.search(query_text, keywords, top_k=max_results * 5)
 
@@ -250,52 +250,44 @@ class FileService:
                 return self.find_regulations_by_stage_and_keywords_traditional(stage, keywords, max_results,
                                                                       strict_stage_match, specific_file)
 
-            # filtered_results = []
-            # stage_filtered_count = 0
-            #
-            # for result in vector_results:
-            #     # 允许接受更多结果，不设置相似度下限
-            #     filtered_results.append(result)
-            #
-            #     # 仅统计阶段匹配情况，不作为过滤条件
-            #     if stage and strict_stage_match:
-            #         result_stage = result.get('stage', '')
-            #         source = result.get('source', {})
-            #         sheet_name = source.get('sheet', '')
-            #
-            #         # 检查阶段匹配
-            #         normalized_stage = self._normalize_stage(stage)
-            #         if (normalized_stage.lower() in sheet_name.lower() or
-            #                 normalized_stage.lower() in result_stage.lower()):
-            #             stage_filtered_count += 1
-            #
-            # print(f"向量搜索原始结果: {len(vector_results)}条, 阶段匹配: {stage_filtered_count}条")
-
-            # 仅当提供了 stage 且要求严格匹配时，才进行阶段过滤
-            if stage and strict_stage_match:
-                strict_results = []
-                normalized_stage = self._normalize_stage(stage)
+            # 1. 按指定文件过滤
+            if specific_file:
+                file_filtered_results = []
                 for result in vector_results:
+                    source = result.get('source', {})
+                    file_name = source.get('file', '')
+                    if specific_file.lower() in file_name.lower():
+                        file_filtered_results.append(result)
+                print(f"向量搜索原始结果: {len(vector_results)}条, 文件过滤后: {len(file_filtered_results)}条")
+                intermediate_results = file_filtered_results
+            else:
+                intermediate_results = vector_results
+
+            # 按阶段过滤
+            if stage and strict_stage_match:
+                stage_filtered_results = []
+                normalized_stage = self._normalize_stage(stage)
+                for result in intermediate_results:
                     result_stage = result.get('stage', '')
                     source = result.get('source', {})
                     sheet_name = source.get('sheet', '')
 
                     if (normalized_stage.lower() in sheet_name.lower() or
                             normalized_stage.lower() in result_stage.lower()):
-                        strict_results.append(result)
+                        stage_filtered_results.append(result)
 
-                print(f"向量搜索原始结果: {len(vector_results)}条, 阶段过滤后: {len(strict_results)}条")
-                filtered_results = strict_results
+                print(f"向量搜索原始结果: {len(vector_results)}条, 阶段过滤后: {len(stage_filtered_results)}条")
+                filtered_results = stage_filtered_results
             else:
                 # 如果不提供 stage 或不要求严格匹配，则返回所有向量搜索结果
                 print(f"向量搜索原始结果: {len(vector_results)}条, 未进行阶段过滤")
-                filtered_results = vector_results
+                filtered_results = intermediate_results
 
             print(f"向量搜索完成，找到 {len(filtered_results)} 条匹配的规范")
             print(f"查询耗时: {time.time() - start_time:.2f}秒")
             return filtered_results[:max_results]
 
-        # 如果指定了文件或不使用向量搜索，则回退到传统方法
+        # 如果不使用向量搜索，则回退到传统方法
         return self.find_regulations_by_stage_and_keywords_traditional(stage, keywords, max_results, strict_stage_match,
                                                               specific_file)
     def find_regulations_by_stage_and_keywords_traditional(self, stage, keywords, max_results=5, strict_stage_match=True, specific_file=None):
@@ -410,7 +402,8 @@ class FileService:
                                 title = f"{os.path.basename(file_path)} - {sheet_name}"
                                 result = {
                                     'title': title,
-                                    'major_item_name': row_data.get('major_item_name', ''),
+                                    'major_item_name': row_data.get('大项名称', ''),
+                                    'supervision_number': row_data.get('监督项目序号', ''),
                                     'basis': row_data.get('监督依据', ''),
                                     'points': row_data.get('监督要点', ''),
                                     'requirements': row_data.get('监督要求', ''),
@@ -520,7 +513,7 @@ class FileService:
     #     return results[:3]
     def find_historical_cases_by_entities(self, entities, stage=None, strict_stage_match=False):
         """
-        【新版】根据实体关键词和可选阶段，使用向量搜索查询历史案例文档
+        根据实体关键词和可选阶段，使用向量搜索查询历史案例文档
         """
         if isinstance(entities, str):
             entities = [entities]

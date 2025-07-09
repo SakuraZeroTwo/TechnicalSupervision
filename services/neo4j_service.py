@@ -82,7 +82,6 @@ class Neo4jService:
         if not entities:
             return {"nodes": [], "links": []}
 
-        # 恢复 all_records 列表
         all_records = []
         try:
             with self._driver.session() as session:
@@ -91,19 +90,16 @@ class Neo4jService:
                    UNWIND $entities AS entityName
                    CALL {
                        WITH entityName
-                       // 优先级1: 精确匹配
                        MATCH (n) WHERE n.name = entityName
                        RETURN n, 1 AS priority
                        LIMIT 1
                    UNION
                        WITH entityName
-                       // 优先级2: 包含匹配
                        MATCH (n) WHERE n.name CONTAINS entityName
                        RETURN n, 2 AS priority
                        LIMIT 1
                    UNION
                        WITH entityName
-                       // 优先级3: 模糊匹配 (阈值可以按需调整，例如0.5或0.85)
                        MATCH (n)
                        WITH n, apoc.text.jaroWinklerDistance(n.name, entityName) AS score
                        WHERE score > 0.5
@@ -111,7 +107,6 @@ class Neo4jService:
                        ORDER BY score DESC
                        LIMIT 1
                    }
-                   // 按 entityName 分组，为每个实体独立筛选最优结果
                    WITH entityName, n, priority
                    ORDER BY priority ASC
                    WITH entityName, head(collect(n)) as best_node
@@ -126,14 +121,14 @@ class Neo4jService:
                     return {"nodes": [], "links": [], "message": "未能根据实体名称找到任何相似的代表节点。"}
 
                 rep_ids = [node.element_id for node in representative_nodes]
-                # 将代表节点自身先加入到记录中，以便在没有邻居和路径时也能显示
                 all_records.extend([{"node": node} for node in representative_nodes])
 
-                # 步骤 2: 【已恢复】基于确切的代表节点ID，查找它们的随机邻居
+                # 步骤 2: 基于确切的代表节点ID，查找它们的随机邻居 (已修改)
                 neighbor_query = """
                    UNWIND $ids AS repId
                    MATCH (n) WHERE elementId(n) = repId
                    MATCH (n)-[r]-(m)
+                   WHERE NOT m:简单处理过程
                    WITH n, r, m, rand() as random_order
                    ORDER BY random_order
                    WITH n, type(r) as rel_type, collect({relation: r, neighbor: m}) as items
@@ -143,7 +138,7 @@ class Neo4jService:
                 neighbor_result = session.run(neighbor_query, {"ids": rep_ids, "k": k})
                 all_records.extend([record for record in neighbor_result])
 
-                # 步骤 3: 【已恢复】基于确切的代表节点ID，查找它们之间的所有路径
+                # 步骤 3: 基于确切的代表节点ID，查找它们之间的所有路径
                 if len(rep_ids) > 1:
                     path_query_template = """
                        MATCH (n) WHERE elementId(n) IN $ids
@@ -159,7 +154,6 @@ class Neo4jService:
                     path_result = session.run(path_query, {"ids": rep_ids})
                     all_records.extend([record for record in path_result])
 
-                # 如果只有代表节点，没有邻居和路径，也能正确返回
                 if not all_records:
                     return {"nodes": [], "links": [], "message": "在图数据库中未找到任何匹配的实体或其关系。"}
 

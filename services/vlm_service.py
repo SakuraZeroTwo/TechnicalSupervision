@@ -46,13 +46,14 @@ def get_vlm_analysis(prompt_text: str, image_path: str = None, stage: str = None
     enhanced_prompt = f"""
     你是一个资深的电力设备巡检专家。请根据以下用户描述{'' if image_path else '(无图片提供)'}，完成以下分析任务：
 
-    1.  **状态描述 (status_description)**: 详细描述{'' if image_path else '根据描述推测'}设备的状态，并判断其严重程度（例如：一般、严重、紧急）。
-    2.  **原因分析 (cause_analysis)**: 分析可能导致该问题的多种潜在原因。
-    3.  **阶段识别 (stage)**: {f'问题属于用户指定的"{stage}"阶段' if stage else '从"规划可研阶段、工程设计阶段、设备采购阶段、设备制造阶段、设备验收阶段、设备安装阶段、设备调试阶段、竣工验收阶段、运维检修阶段、退役报废阶段"中，识别该问题最可能出现的阶段。'}
-    4.  **监督意见 (supervision_suggestion)**: 提出具体、可执行的处理建议或监督意见。
+    1.  **扩写描述 (expanded_description)**: 基于用户提供的描述和图片（如有），请用专业、详细、书面的语言，对问题现象进行扩写，使其更适合作为正式报告中的问题描述。
+    2.  **状态描述 (status_description)**: 详细描述{'' if image_path else '根据描述推测'}设备的状态，并判断其严重程度（例如：一般、严重、紧急）。
+    3.  **原因分析 (cause_analysis)**: 分析可能导致该问题的多种潜在原因。
+    4.  **阶段识别 (stage)**: {f'问题属于用户指定的"{stage}"阶段' if stage else '从"规划可研阶段、工程设计阶段、设备采购阶段、设备制造阶段、设备验收阶段、设备安装阶段、设备调试阶段、竣工验收阶段、运维检修阶段、退役报废阶段"中，识别该问题最可能出现的阶段。'}
+    5.  **监督意见 (supervision_suggestion)**: 提出具体、可执行的处理建议或监督意见。
 
     {'''
-    5.  **实体提取 (entities)**: 从用户描述和你的分析中，识别出核心实体。请遵循以下规则：
+    6.  **实体提取 (entities)**: 从用户描述和你的分析中，识别出核心实体。请遵循以下规则：
         - **规则1**: 请优先从以下 '已知实体列表' 中进行识别，若出现已知实体列表内的设备或现象，直接识别，尽可能匹配上已知实体列表，如“主变压器”识别成“变压器”，出现列表内描述的现象也识别成现象实体。
         - **规则2**: 请识别通用设备名称或故障现象（如 '变压器', '局部放电'），而不是具体的、详细的设备型号（例如 'S11-M-100/10'）。
         - **已知实体列表**: [{KNOWN_ENTITIES_STR}]
@@ -60,7 +61,7 @@ def get_vlm_analysis(prompt_text: str, image_path: str = None, stage: str = None
     '''  
     }
 
-    请严格将你的回答以一个完整的 JSON 对象的格式返回，确保不包含任何额外的解释性文字。JSON对象必须包含以下键：'status_description', 'cause_analysis', 'stage', 'supervision_suggestion', 'entities'。
+    请严格将你的回答以一个完整的 JSON 对象的格式返回，确保不包含任何额外的解释性文字。JSON对象必须包含以下键：'expanded_description'，'status_description', 'cause_analysis', 'stage', 'supervision_suggestion', 'entities'。
 
     用户描述: "{prompt_text}"
     """

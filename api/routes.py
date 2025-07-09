@@ -17,6 +17,7 @@ from services.vlm_service import get_vlm_analysis, get_vlm_entities
 from services.word_service import create_word_report
 from services.file_service import file_service
 from services.vlm_service import rerank_regulations_with_vlm
+from urllib.parse import unquote
 
 # 创建一个蓝图
 api_bp = Blueprint('api', __name__)
@@ -135,6 +136,14 @@ def analyze_issue():
         # file_service 返回的结果已经按相关性排序，直接取第一个即可
         best_regulation = ranked_regulations[0]
 
+    # 如果用户未指定阶段，但找到了匹配的规范，则从规范中回填阶段信息
+    if not recognized_stage or recognized_stage is None:
+        # 从规范的源数据中提取阶段，并确保它是一个非空字符串
+        inferred_stage = best_regulation.get('source', {}).get('sheet')
+        if inferred_stage:
+            recognized_stage = inferred_stage
+            current_app.logger.info(f"从匹配的规范 '{best_regulation.get('title')}' 中推断出阶段: {recognized_stage}")
+
     # 8. 准备用于前端展示的结构化数据
     display_data = {
         "description": {
@@ -171,7 +180,7 @@ def analyze_issue():
     final_response = {
         "display_data": display_data,
         "historical_cases":  historical_cases,
-        "regulations": ranked_regulations[:30], # 返回所有检索到的条例供前端选择
+        "regulations": ranked_regulations[:5], # 返回检索到的5条得分最高的条例供前端选择
         "report_url": None
     }
 
@@ -182,6 +191,7 @@ def analyze_issue():
             'supervision_stage': recognized_stage,
             'regulation': best_regulation,
             'description': description,
+            'expanded_description': analysis_content.get('expanded_description', '无扩写描述'),
             'analysis': analysis_content.get('cause_analysis', '待补充'),
             'suggestions': analysis_content.get('supervision_suggestion', '待补充'),
             'unit_name': '待补充',
@@ -222,8 +232,113 @@ def analyze_issue():
         report_url = request.host_url + 'static/reports/' + os.path.basename(report_path)
         final_response["report_url"] = report_url
 
+    # 11. 【新增】缓存上下文用于重新生成
+    task_id = str(uuid.uuid4())
+    current_app.cache[task_id] = {
+        "description": description,
+        "image_path": image_path,
+        "analysis_content": analysis_content,
+        "ranked_regulations": ranked_regulations,
+        "recognized_stage": recognized_stage,
+        "generate_word": generate_word
+    }
+    final_response["task_id"] = task_id
+
     return jsonify(final_response)
 
+
+@api_bp.route('/regenerate', methods=['POST'])
+def regenerate_analysis_and_report():
+    """
+    根据用户从列表中选择的新细则，重新生成分析和报告。
+    """
+    data = request.get_json()
+    task_id = data.get('task_id')
+    selected_regulation = data.get('selected_regulation')
+
+    if not task_id or not selected_regulation:
+        return jsonify({"error": "缺少 task_id 或 selected_regulation"}), 400
+
+    # 1. 从缓存中获取原始上下文
+    cached_data = current_app.cache.get(task_id)
+    if not cached_data:
+        return jsonify({"error": "任务已过期或无效"}), 404
+
+    description = cached_data['description']
+    image_path = cached_data['image_path']
+    analysis_content = cached_data['analysis_content']
+    recognized_stage = cached_data['recognized_stage']
+    generate_word = cached_data['generate_word']
+
+    # 2. 准备新的前端展示数据
+    display_data = {
+        "description": {
+            "title": "问题描述",
+            "content": description
+        },
+        "regulation_details": {
+            "title": "依据细则",
+            "content": f"**细则名称**: {selected_regulation.get('title', '未匹配到细则')}\n\n"
+                       f"**监督依据**: {selected_regulation.get('basis', '无')}"
+        },
+        "supervision_standard": {
+            "title": "监督标准",
+            "content": selected_regulation.get('points', '根据上述细则进行监督')
+        },
+        "cause_analysis": {
+            "title": "原因分析",
+            "content": analysis_content.get('cause_analysis', '暂无分析')
+        },
+        "supervision_suggestion": {
+            "title": "监督意见",
+            "content": analysis_content.get('supervision_suggestion', '暂无建议')
+        }
+    }
+
+    # 3. 准备最终响应
+    final_response = {
+        "display_data": display_data,
+        "report_url": None
+    }
+
+    # 4. 如果需要，重新生成Word报告
+    if generate_word:
+        word_report_data = {
+            'case_name': '待补充',
+            'supervision_stage': recognized_stage,
+            'regulation': selected_regulation,
+            'description': description,
+            'analysis': analysis_content.get('cause_analysis', '待补充'),
+            'suggestions': analysis_content.get('supervision_suggestion', '待补充'),
+            'unit_name': '待补充',
+            'project_info': {},
+            'device_info': {},
+            'supervision_major': '待补充',
+            'discovery_date': '待补充',
+            'rectification_measures': '待补充',
+            'other_issues': '无',
+            'attachments': '无'
+        }
+
+        if selected_regulation:
+            major_item = selected_regulation.get('major_item_name', '')
+            super_num = str(selected_regulation.get('supervision_number', '')).strip()
+            major_num_match = re.match(r'^(\d+(?:\.\d+)*)', major_item)
+            major_num = major_num_match.group(1) if major_num_match else ''
+
+            if major_num and super_num and super_num != '0':
+                clause_no = f"{major_num}.{super_num}"
+            elif major_num:
+                clause_no = major_num
+            else:
+                clause_no = super_num or '未知'
+            word_report_data['regulation']['clause'] = clause_no
+
+        report_path = create_word_report(word_report_data, image_path)
+        report_url = request.host_url + 'static/reports/' + os.path.basename(report_path)
+        final_response["report_url"] = report_url
+
+    return jsonify(final_response)
 
 # 添加阶段获取端点
 @api_bp.route('/stages', methods=['GET'])
@@ -266,11 +381,16 @@ def search_historical_cases():
 @api_bp.route('/download/case/<path:filename>', methods=['GET'])
 def download_case_file(filename):
     """提供历史案例文档的下载"""
+    """提供历史案例文档的下载"""
     try:
+        # 完全解码文件名，处理URL中的特殊字符
+        decoded_filename = unquote(filename)
+
         # 从 file_service 获取案例文件存放的目录
         case_directory = file_service.cases_path
+
         # 使用 send_from_directory 安全地发送文件
-        return send_from_directory(case_directory, filename, as_attachment=True)
+        return send_from_directory(case_directory, decoded_filename, as_attachment=True)
     except FileNotFoundError:
         return jsonify({"error": "文件未找到"}), 404
     except Exception as e:

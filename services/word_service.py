@@ -55,7 +55,7 @@ def set_cell_properties(cell, text, bold=False, align='LEFT', font_name='仿宋_
 
 def create_word_report(data: dict, image_input) -> str:
     """
-    【最终版】以3列表格为基础，严格按照用户提供的文档格式生成报告。
+    以3列表格为基础，严格按照用户提供的文档格式生成报告。
     """
     image_list = []
     if isinstance(image_input, str) and image_input:
@@ -165,7 +165,8 @@ def create_word_report(data: dict, image_input) -> str:
     add_merged_row('*发现时间', 'discovery_date')
 
     # [cite_start]问题描述, 原因分析, 等... [cite: 2]
-    add_merged_row('*问题描述', 'description')
+    add_merged_row('*原始描述', 'description')
+    add_merged_row('*问题描述', 'expanded_description')
     add_merged_row('*问题原因分析', 'analysis')
     add_merged_row('*监督意见', 'suggestions')
     add_merged_row('*实际整改措施', 'rectification_measures')
