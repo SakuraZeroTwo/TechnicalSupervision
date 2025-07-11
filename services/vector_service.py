@@ -133,6 +133,8 @@ class VectorService:
 
         # 3. 保存缓存
         try:
+            # 在写入前确保目录存在
+            os.makedirs(self.cache_dir, exist_ok=True)
             # 保存Faiss索引
             faiss.write_index(self.case_index, self.case_index_file)
             # 保存元数据和文本
@@ -259,6 +261,8 @@ class VectorService:
     def _save_cache(self):
         """将所有索引和相关数据保存到本地"""
         try:
+             # 在写入前确保目录存在
+            os.makedirs(self.cache_dir, exist_ok=True)
             # 保存FAISS索引
             if self.index:
                 faiss.write_index(self.index, self.index_file)

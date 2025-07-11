@@ -17,7 +17,7 @@ from services.vlm_service import get_vlm_analysis, get_vlm_entities
 from services.word_service import create_word_report
 from services.file_service import file_service
 from services.vlm_service import rerank_regulations_with_vlm
-from urllib.parse import unquote
+from urllib.parse import unquote,quote
 
 # 创建一个蓝图
 api_bp = Blueprint('api', __name__)
@@ -104,7 +104,7 @@ def analyze_issue():
     candidate_regulations = file_service.find_regulations_by_stage_and_keywords(
         stage=clean_stage,
         keywords=description,
-        max_results=100,  # 获取100个候选
+        max_results=30,  # 获取30个候选
         strict_stage_match=True,
         specific_file=specific_file,
         use_vector_search=True
@@ -174,7 +174,8 @@ def analyze_issue():
     for case in historical_cases:
         if 'source' in case:
             # 构建完整的下载URL
-            case['download_url'] = f"{request.host_url}api/download/case/{case['source']}"
+            encoded_filename = quote(case['source'])
+            case['download_url'] = f"{request.host_url}api/download/case/{encoded_filename}"
 
     # 9. 准备最终响应
     final_response = {
@@ -373,7 +374,8 @@ def search_historical_cases():
     # 下载链接
     for case in cases:
         if 'source' in case:
-            case['download_url'] = f"{request.host_url}api/download/case/{case['source']}"
+            encoded_filename = quote(case['source'])
+            case['download_url'] = f"{request.host_url}api/download/case/{encoded_filename}"
     return jsonify(cases)
 
 
