@@ -442,7 +442,8 @@ def generate_answer_and_cases():
     historical_cases = file_service.find_historical_cases_by_entities(entities_list)
     for case in historical_cases:
         if 'source' in case:
-            case['download_url'] = f"{request.host_url}api/download/case/{case['source']}"
+            encoded_filename = quote(case['source'])
+            case['download_url'] = f"{request.host_url}api/download/case/{encoded_filename}"
 
     task_id = str(uuid.uuid4())
     cached_data = {
